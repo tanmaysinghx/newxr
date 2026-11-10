@@ -1,0 +1,180 @@
+<aside class="rail">
+  <nx-logo [mark]="28" />
+  <div class="rail-title">Set up Newxr</div>
+  <ol class="stepper">
+    @for (s of steps; track s; let i = $index) {
+      <li [class.done]="i < step()" [class.current]="i === step()">
+        <span class="dot">@if (i < step()) { <nx-icon name="check" [size]="12" [stroke]="3" /> } @else { {{ i + 1 }} }</span>{{ s }}
+      </li>
+    }
+  </ol>
+  <div class="rail-foot tiny">Everything here can be changed later under Administration, or in <span class="mono">newxr.properties</span>.</div>
+</aside>
+
+<main class="panel">
+  @if (restarting()) {
+    <div class="card center restart">
+      <div class="spinner"></div>
+      <h2>Switching databases…</h2>
+      <p class="muted">Newxr saved the connection to <span class="mono">newxr.properties</span> and is restarting onto it. This takes a few seconds.</p>
+    </div>
+  } @else {
+  <div class="card body">
+    <div class="step-label tiny subtle">Step {{ step() + 1 }} of {{ steps.length }}</div>
+
+    @switch (step()) {
+      @case (0) {
+        <h2>Unlock setup</h2>
+        <p class="muted">To prove you administer this server, paste the setup key it generated on first start. It is printed in the server log and stored in:</p>
+        <pre class="path">{{ status()?.setupKeyFile ?? '~/.newxr/secrets/initialSetupKey' }}</pre>
+        @if (status() && !status()!.setupKeyIssued) {
+          <div class="banner warning"><nx-icon name="alert" /><div>No setup key was issued. Restart the server, or set <span class="mono">newxr.bootstrap.admin-email</span> and <span class="mono">-password</span> in newxr.properties.</div></div>
+        }
+        <div class="field"><label for="key">Setup key</label>
+          <input id="key" class="input lg mono" [(ngModel)]="setupKey" name="key" autocomplete="off" spellcheck="false" placeholder="32 hexadecimal characters" (keydown.enter)="next()" autofocus /></div>
+      }
+
+      @case (1) {
+        <h2>License</h2>
+        <p class="muted">Newxr is open source software licensed under the {{ status()?.licenseName }}. Read and accept it to continue.</p>
+        <pre class="license">{{ licenseText() }}</pre>
+        <label class="check"><input type="checkbox" [(ngModel)]="licenseAccepted" name="lic" /> I have read and accept the Apache License, Version 2.0</label>
+      }
+
+      @case (2) {
+        <h2>Database</h2>
+        <p class="muted">Where Newxr keeps its data. The embedded database is fine for a trial or a small team; use PostgreSQL or MySQL in production.</p>
+        @if (status()?.database; as d) { <div class="small muted">Currently running on <span class="strong">{{ dbLabel() }}</span>.</div> }
+        <div class="choices">
+          <button type="button" class="choice" [class.on]="dbType === 'h2'" (click)="dbType = 'h2'; dbTest.set(null)">
+            <nx-icon name="server" [size]="20" /><div><div class="strong">Embedded (H2)</div><div class="tiny muted">No setup. Stored in the Newxr home folder.</div></div></button>
+          <button type="button" class="choice" [class.on]="dbType === 'postgresql'" (click)="dbType = 'postgresql'; dbTest.set(null)">
+            <nx-icon name="server" [size]="20" /><div><div class="strong">PostgreSQL</div><div class="tiny muted">15 or later. Recommended.</div></div></button>
+          <button type="button" class="choice" [class.on]="dbType === 'mysql'" (click)="dbType = 'mysql'; dbTest.set(null)">
+            <nx-icon name="server" [size]="20" /><div><div class="strong">MySQL</div><div class="tiny muted">8.0 or later, or MariaDB.</div></div></button>
+        </div>
+        @if (dbType !== 'h2') {
+          <label class="check small"><input type="checkbox" [(ngModel)]="useJdbcUrl" name="jdbc" /> Enter a JDBC URL instead</label>
+          <div class="form-grid">
+            @if (useJdbcUrl) {
+              <div class="field full"><label>JDBC URL</label><input class="input mono" [(ngModel)]="db.jdbcUrl" name="url"
+                [placeholder]="dbType === 'postgresql' ? 'jdbc:postgresql://db.internal:5432/newxr?sslmode=require' : 'jdbc:mysql://db.internal:3306/newxr'" /></div>
+            } @else {
+              <div class="field"><label>Host</label><input class="input" [(ngModel)]="db.host" name="host" /></div>
+              <div class="field"><label>Port</label><input class="input" type="number" [(ngModel)]="db.port" name="port" [placeholder]="dbType === 'postgresql' ? '5432' : '3306'" /></div>
+              <div class="field full"><label>Database name</label><input class="input" [(ngModel)]="db.database" name="db" /></div>
+            }
+            <div class="field"><label>Username</label><input class="input" [(ngModel)]="db.username" name="user" autocomplete="off" /></div>
+            <div class="field"><label>Password</label><input class="input" type="password" [(ngModel)]="db.password" name="pw" autocomplete="new-password" /></div>
+          </div>
+          <div class="row"><button type="button" class="btn" (click)="testDatabase()" [disabled]="busy()"><nx-icon name="refresh" /> Test connection</button></div>
+          @if (dbTest(); as t) { <div class="banner" [class.success]="t.ok" [class.danger]="!t.ok"><nx-icon [name]="t.ok ? 'check-circle' : 'x-circle'" /><div>{{ t.message }}</div></div> }
+          <div class="banner small"><nx-icon name="info" /><div>Create an empty database and a user that owns it first. Newxr creates its tables, writes the connection to
+            <span class="mono">{{ status()?.database?.configFile }}</span> and restarts onto it.</div></div>
+        }
+      }
+
+      @case (3) {
+        <h2>Administrator &amp; sign-in</h2>
+        <p class="muted">The administrator always keeps a Newxr password, so you can get back in if single sign-on is ever unavailable.</p>
+        <div class="form-grid">
+          <div class="field"><label>Full name <span class="req">*</span></label><input class="input" [(ngModel)]="admin.name" name="an" autocomplete="name" /></div>
+          <div class="field"><label>Email <span class="req">*</span></label><input class="input" type="email" [(ngModel)]="admin.email" name="ae" autocomplete="email" /></div>
+          <div class="field"><label>Password <span class="req">*</span></label><input class="input" type="password" [(ngModel)]="admin.password" name="ap" autocomplete="new-password" />
+            <span class="hint">{{ status()?.passwordPolicy }}</span></div>
+          <div class="field"><label>Confirm password <span class="req">*</span></label><input class="input" type="password" [(ngModel)]="admin.confirm" name="ac" autocomplete="new-password" /></div>
+        </div>
+        <hr />
+        <h3>How do people sign in?</h3>
+        <label class="option"><input type="checkbox" [(ngModel)]="builtinEnabled" name="bi" />
+          <div><div class="strong">Built-in accounts</div><div class="small muted">Email and password stored in Newxr. Administrators invite users.</div></div></label>
+        <label class="option"><input type="checkbox" [(ngModel)]="portalEnabled" name="pe" />
+          <div><div class="strong">Portal SSO</div><div class="small muted">OpenID Connect with PKCE through your Portal SSO server. Accounts are created on first sign-in.</div></div></label>
+        @if (portalEnabled) {
+          <div class="sso card">
+            <div class="banner small"><nx-icon name="info" /><div>In Portal SSO open <b>Applications → New application</b>, name it Newxr and register this redirect URI:
+              <div class="row mt-8"><code class="grow truncate">{{ status()?.portalRedirectUri }}</code>
+                <button type="button" class="btn sm" (click)="copy(status()?.portalRedirectUri ?? '')">Copy</button></div></div></div>
+            <div class="form-grid">
+              <div class="field full"><label>Portal SSO address (issuer) <span class="req">*</span></label>
+                <div class="row"><input class="input grow" [(ngModel)]="portal.issuerUrl" name="iss" placeholder="https://sso.example.com" />
+                  <button type="button" class="btn" (click)="testPortal()">Check</button></div></div>
+              @if (portalTest(); as t) { <div class="full banner" [class.success]="t.ok" [class.danger]="!t.ok"><nx-icon [name]="t.ok ? 'check-circle' : 'x-circle'" /><div>{{ t.message }}</div></div> }
+              <div class="field"><label>Client ID <span class="req">*</span></label><input class="input" [(ngModel)]="portal.clientId" name="cid" /></div>
+              <div class="field"><label>Client secret</label><input class="input" type="password" [(ngModel)]="portal.clientSecret" name="cs" autocomplete="new-password" />
+                <span class="hint">Leave empty for a public client. Stored encrypted.</span></div>
+              <div class="field"><label>Button label</label><input class="input" [(ngModel)]="portal.buttonLabel" name="bl" /></div>
+              <label class="check small"><input type="checkbox" [(ngModel)]="portal.autoProvision" name="ap2" /> Create an account on first sign-in</label>
+            </div>
+          </div>
+        }
+      }
+
+      @case (4) {
+        <h2>Kafka <span class="chip">Optional</span></h2>
+        <p class="muted">Newxr can publish every change — issue created, page published, alert raised — as JSON to a Kafka topic, so other systems can react.
+          Without Kafka, events stay inside Newxr.</p>
+        <label class="option"><input type="checkbox" [(ngModel)]="kafkaEnabled" name="ke" />
+          <div><div class="strong">Publish events to Kafka</div><div class="small muted">Topic: <span class="mono">{{ kafka.topicPrefix || 'newxr' }}.events</span>, keyed by issue / page key.</div></div></label>
+        @if (kafkaEnabled) {
+          <div class="form-grid">
+            <div class="field full"><label>Bootstrap servers <span class="req">*</span></label><input class="input mono" [(ngModel)]="kafka.bootstrapServers" name="bs" placeholder="kafka-1:9092,kafka-2:9092" /></div>
+            <div class="field"><label>Topic prefix</label><input class="input" [(ngModel)]="kafka.topicPrefix" name="tp" /></div>
+            <div class="field"><label>Security protocol</label>
+              <select class="input" [(ngModel)]="kafka.securityProtocol" name="sp">
+                <option>PLAINTEXT</option><option>SSL</option><option>SASL_PLAINTEXT</option><option>SASL_SSL</option></select></div>
+            @if (kafka.securityProtocol.startsWith('SASL')) {
+              <div class="field"><label>SASL mechanism</label>
+                <select class="input" [(ngModel)]="kafka.saslMechanism" name="sm"><option>PLAIN</option><option>SCRAM-SHA-256</option><option>SCRAM-SHA-512</option></select></div>
+              <div class="field"><label>Username</label><input class="input" [(ngModel)]="kafka.username" name="ku" autocomplete="off" /></div>
+              <div class="field"><label>Password</label><input class="input" type="password" [(ngModel)]="kafka.password" name="kp" autocomplete="new-password" /></div>
+            }
+          </div>
+          <div class="row"><button type="button" class="btn" (click)="testKafka()" [disabled]="busy()"><nx-icon name="refresh" /> Test connection</button></div>
+          @if (kafkaTest(); as t) { <div class="banner" [class.success]="t.ok" [class.danger]="!t.ok"><nx-icon [name]="t.ok ? 'check-circle' : 'x-circle'" /><div>{{ t.message }}</div></div> }
+        }
+      }
+
+      @case (5) {
+        <h2>Organization</h2>
+        <p class="muted">Shown on the sign-in page and across the apps.</p>
+        <div class="form-grid">
+          <div class="field full"><label>Organization name <span class="req">*</span></label><input class="input" [(ngModel)]="org.name" name="on" placeholder="Northwind Inc." /></div>
+          <div class="field"><label>Logo URL</label><input class="input" [(ngModel)]="org.logoUrl" name="ol" placeholder="https://…/logo.png" /></div>
+          <div class="field"><label>Support / help URL</label><input class="input" [(ngModel)]="org.supportUrl" name="os" placeholder="https://intranet/help" /></div>
+        </div>
+        <label class="option"><input type="checkbox" [(ngModel)]="sampleData" name="sd" />
+          <div><div class="strong">Add sample content</div><div class="small muted">A demo project, space, board, service desk and more, so every app has something to explore. Delete it any time.</div></div></label>
+      }
+
+      @case (6) {
+        <h2>Review</h2>
+        <dl class="review">
+          <dt>License</dt><dd>{{ status()?.licenseName }} — accepted</dd>
+          <dt>Database</dt><dd>{{ dbLabel() }}</dd>
+          <dt>Administrator</dt><dd>{{ admin.name }} · {{ admin.email }}</dd>
+          <dt>Sign-in</dt><dd>{{ builtinEnabled ? 'Built-in accounts' : '' }}{{ builtinEnabled && portalEnabled ? ' + ' : '' }}{{ portalEnabled ? 'Portal SSO (' + portal.issuerUrl + ')' : '' }}</dd>
+          <dt>Kafka</dt><dd>{{ kafkaEnabled ? kafka.bootstrapServers + ' → ' + (kafka.topicPrefix || 'newxr') + '.events' : 'Off' }}</dd>
+          <dt>Organization</dt><dd>{{ org.name }}{{ sampleData ? ' · with sample content' : '' }}</dd>
+        </dl>
+      }
+    }
+
+    @if (error()) { <div class="banner danger"><nx-icon name="alert" /><div>{{ error() }}</div></div> }
+
+    <div class="foot">
+      @if (step() > 0 && step() !== 3) { <button class="btn ghost" (click)="back()">Back</button> }
+      @if (step() === 3 && !status()?.database?.confirmed) { <button class="btn ghost" (click)="back()">Back</button> }
+      <span class="grow"></span>
+      <button class="btn primary" (click)="next()" [disabled]="busy()">
+        @switch (step()) {
+          @case (2) { {{ dbType === 'h2' ? 'Use embedded database' : 'Use this database' }} }
+          @case (4) { {{ kafkaEnabled ? 'Continue' : 'Skip Kafka' }} }
+          @case (6) { {{ busy() ? 'Setting up…' : 'Finish setup' }} }
+          @default { Continue }
+        }
+      </button>
+    </div>
+  </div>
+  }
+</main>

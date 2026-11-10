@@ -1,0 +1,141 @@
+<nx-app-frame>
+  <nx-sidebar [context]="{ title: issue()?.project?.name ?? '', subtitle: 'Software project', app: 'track' }" [items]="nav()" />
+  @if (issue(); as i) {
+  <div class="page">
+    <div class="crumbs">
+      <a routerLink="/track">Projects</a><span class="sep">/</span>
+      <a [routerLink]="['/track', i.project.key, 'board']">{{ i.project.name }}</a><span class="sep">/</span>
+      @if (i.parentKey) { <a [routerLink]="['/track/issue', i.parentKey]" class="row gap-4"><nx-itype [type]="i.parentType ?? 'EPIC'" [size]="14" />{{ i.parentKey }} {{ i.parentSummary }}</a><span class="sep">/</span> }
+      <span class="row gap-4"><nx-itype [type]="i.type" [size]="14" />{{ i.key }}</span>
+    </div>
+
+    <div class="layout">
+      <div class="main">
+        <div class="row between head">
+          @if (editingSummary()) {
+            <input class="input summary-input" [(ngModel)]="summary" (blur)="saveSummary()" (keydown.enter)="saveSummary()" (keydown.escape)="editingSummary.set(false)" autofocus />
+          } @else { <h1 class="summary" (click)="editingSummary.set(true)" title="Click to edit">{{ i.summary }}</h1> }
+          <div class="row gap-4 tools">
+            <button class="btn ghost icon" (click)="star()" [attr.aria-label]="starred() ? 'Unstar' : 'Star'"><nx-icon name="star" [style.color]="starred() ? '#e8a317' : null" /></button>
+            <button class="btn ghost icon" (click)="copyLink()" aria-label="Copy link"><nx-icon name="link" /></button>
+            <button class="btn ghost icon" (click)="confirmDelete.set(true)" aria-label="Delete issue"><nx-icon name="x-circle" /></button>
+          </div>
+        </div>
+        <div class="row wrap actions">
+          @if (i.type !== 'SUBTASK') { <button class="btn sm" (click)="addingChild.set(true)"><nx-icon name="list" [size]="14" /> Add child</button> }
+          <button class="btn sm" (click)="editDesc()"><nx-icon name="edit" [size]="14" /> Edit description</button>
+          <span class="btn sm ghost mono" title="Create a branch with this name in Code">
+            <nx-icon name="branch" [size]="14" /> feature/{{ i.key }}</span>
+        </div>
+
+        <section>
+          <h3>Description</h3>
+          @if (editingDesc()) {
+            <textarea class="input desc-edit" [(ngModel)]="description" rows="10" placeholder="Markdown: **bold**, - lists, [links](https://…), | tables |"></textarea>
+            <div class="row mt-8"><button class="btn primary sm" (click)="saveDesc()">Save</button><button class="btn ghost sm" (click)="editingDesc.set(false)">Cancel</button></div>
+          } @else if (i.description) {
+            <div class="prose" [innerHTML]="descHtml()" (dblclick)="editDesc()"></div>
+          } @else { <button class="placeholder" (click)="editDesc()">Add a description…</button> }
+        </section>
+
+        <section>
+          <div class="row between"><h3>Acceptance criteria</h3>@if (i.checklist.length) { <span class="small muted">{{ checkDone() }} of {{ i.checklist.length }}</span> }</div>
+          @for (c of i.checklist; track $index) {
+            <div class="check-row"><label class="check grow"><input type="checkbox" [checked]="c.done" (change)="toggleCheck($index)" /><span [class.done]="c.done">{{ c.text }}</span></label>
+              <button class="btn ghost sm icon" (click)="removeCheck($index)" aria-label="Remove"><nx-icon name="x" [size]="13" /></button></div>
+          }
+          <div class="row mt-8"><input class="input" [(ngModel)]="newCheck" placeholder="Add a criterion and press Enter" (keydown.enter)="addCheck()" /></div>
+        </section>
+
+        @if (i.children.length || i.type === 'EPIC') {
+        <section class="card flush">
+          <div class="row between child-head"><h3>{{ i.type === 'EPIC' ? 'Issues in this epic' : 'Child issues' }}</h3>
+            <div class="row"><div class="progress" style="width:120px"><span [style.width.%]="childPct()"></span></div><span class="small muted">{{ childPct() }}% done</span></div></div>
+          @for (c of i.children; track c.key) {
+            <a class="list-row" [routerLink]="['/track/issue', c.key]"><nx-itype [type]="c.type" /><span class="key" style="width:64px">{{ c.key }}</span>
+              <span class="grow truncate">{{ c.summary }}</span><nx-status [value]="c.status" /><nx-avatar [user]="c.assignee" [size]="22" /></a>
+          } @empty { <div class="small muted" style="padding:12px 16px">No issues yet.</div> }
+        </section>
+        }
+
+        <section>
+          <h3>Activity</h3>
+          <div class="tabs"><button [class.active]="tab() === 'comments'" (click)="tab.set('comments')">Comments <span class="count">{{ i.comments.length }}</span></button>
+            <button [class.active]="tab() === 'history'" (click)="tab.set('history')">History</button></div>
+          @if (tab() === 'comments') {
+            <div class="composer"><nx-avatar [user]="auth.me()" [size]="28" />
+              <div class="grow col"><textarea class="input" rows="3" [(ngModel)]="newComment" placeholder="Add a comment… Use @Name to mention someone." (keydown.control.enter)="comment()" (keydown.meta.enter)="comment()"></textarea>
+                <div class="row between"><span class="tiny subtle">Markdown supported · Ctrl+Enter to save</span><button class="btn primary sm" (click)="comment()" [disabled]="!newComment.trim()">Save</button></div></div></div>
+            @for (c of i.comments.slice().reverse(); track c.id) {
+              <div class="comment"><nx-avatar [user]="c.author" [size]="28" />
+                <div class="grow"><div class="row"><span class="strong">{{ c.author?.name ?? 'Deleted user' }}</span><span class="tiny subtle" [title]="dateTime(c.createdAt)">{{ ago(c.createdAt) }}{{ c.edited ? ' · edited' : '' }}</span></div>
+                  @if (editingComment === c.id) {
+                    <textarea class="input mt-8" rows="3" [(ngModel)]="commentDraft"></textarea>
+                    <div class="row mt-8"><button class="btn primary sm" (click)="saveComment(c.id)">Save</button><button class="btn ghost sm" (click)="editingComment = null">Cancel</button></div>
+                  } @else {
+                    <div class="prose small-prose" [innerHTML]="commentHtml(c.body)"></div>
+                    @if (c.author?.id === auth.me()?.id) { <div class="row tiny"><button class="link-btn" (click)="startEditComment(c.id, c.body)">Edit</button><button class="link-btn" (click)="deleteComment(c.id)">Delete</button></div> }
+                  }
+                </div></div>
+            }
+          } @else {
+            @for (h of i.history; track $index) {
+              <div class="history"><nx-avatar [user]="h.actor" [size]="22" /><span><b>{{ h.actor?.name ?? 'Someone' }}</b> {{ historyText(h) }}</span><span class="tiny subtle nowrap">{{ ago(h.at) }}</span></div>
+            }
+          }
+        </section>
+      </div>
+
+      <aside class="side">
+        <div class="anchor">
+          <button class="btn status-btn" [class]="'btn status-btn ' + i.status" (click)="statusOpen.set(!statusOpen())">{{ label(i.status) }} <nx-icon name="chevron-down" [size]="14" /></button>
+          @if (statusOpen()) {
+            <div class="popover" style="top:38px;left:0">
+              @for (s of statuses; track s) { <button class="menu-item" [class.active]="s === i.status" (click)="setStatus(s)"><nx-status [value]="s" /></button> }
+            </div>
+          }
+        </div>
+
+        <div class="card details">
+          <h4>Details</h4>
+          <dl>
+            <dt>Assignee</dt><dd><select class="input bare" [ngModel]="i.assignee?.id ?? null" (ngModelChange)="set('assigneeId', $event)">
+              <option [ngValue]="null">Unassigned</option>@for (u of people.all(); track u.id) { <option [ngValue]="u.id">{{ u.name }}</option> }</select></dd>
+            <dt>Reporter</dt><dd><div class="row"><nx-avatar [user]="i.reporter" [size]="20" />{{ i.reporter?.name }}</div></dd>
+            <dt>Type</dt><dd><select class="input bare" [ngModel]="i.type" (ngModelChange)="set('type', $event)">@for (t of types; track t) { <option [value]="t">{{ label(t) }}</option> }</select></dd>
+            <dt>Priority</dt><dd><div class="row"><nx-priority [value]="i.priority" />
+              <select class="input bare" [ngModel]="i.priority" (ngModelChange)="set('priority', $event)">@for (p of priorities; track p) { <option [value]="p">{{ label(p) }}</option> }</select></div></dd>
+            <dt>Labels</dt><dd><input class="input bare" [(ngModel)]="labelsText" (blur)="saveLabels()" (keydown.enter)="saveLabels()" placeholder="None" /></dd>
+            <dt>Sprint</dt><dd><select class="input bare" [ngModel]="i.sprintId ?? null" (ngModelChange)="set('sprintId', $event)">
+              <option [ngValue]="null">Backlog</option>@for (s of sprints(); track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
+              @if (i.sprintId && !sprints().length) { <option [ngValue]="i.sprintId">{{ i.sprintName }}</option> }</select></dd>
+            <dt>Story points</dt><dd><input class="input bare" type="number" min="0" [ngModel]="i.points" (change)="set('points', $any($event.target).value === '' ? null : +$any($event.target).value)" placeholder="None" /></dd>
+            <dt>Fix version</dt><dd><input class="input bare" [ngModel]="i.fixVersion" (change)="set('fixVersion', $any($event.target).value)" placeholder="None" /></dd>
+            @if (i.type === 'EPIC') { <dt>Start date</dt><dd><input class="input bare" type="date" [ngModel]="i.startDate" (change)="set('startDate', $any($event.target).value)" /></dd> }
+            <dt>Due date</dt><dd><input class="input bare" type="date" [ngModel]="i.dueDate" (change)="set('dueDate', $any($event.target).value)" /></dd>
+            @if (i.type !== 'EPIC') { <dt>{{ i.type === 'SUBTASK' ? 'Parent' : 'Epic' }}</dt><dd><input class="input bare" [ngModel]="i.parentKey" (change)="set('parentKey', $any($event.target).value)" placeholder="None" /></dd> }
+          </dl>
+        </div>
+
+        <div class="card details">
+          <h4>Development</h4>
+          @for (l of linked(); track l.link) {
+            <a class="dev" [routerLink]="l.link"><nx-icon [name]="l.kind === 'pr' ? 'pr' : l.kind === 'branch' ? 'branch' : 'play'" [size]="14" /><span class="grow truncate">{{ l.title }}</span><nx-status [value]="l.status" /></a>
+          } @empty { <div class="small muted">Mention <span class="mono">{{ i.key }}</span> in a branch, commit or pull request in Code to link it here.</div> }
+        </div>
+        <div class="tiny subtle">Created {{ longDate(i.createdAt) }} · Updated {{ ago(i.updatedAt) }}</div>
+      </aside>
+    </div>
+  </div>
+  }
+</nx-app-frame>
+
+@if (addingChild()) {
+  <nx-create-issue [projectKey]="issue()!.project.key" [defaults]="{ parentKey: issue()!.key, type: issue()!.type === 'EPIC' ? 'STORY' : 'SUBTASK', sprintId: issue()!.sprintId ?? null }" (closed)="childClosed()" />
+}
+@if (confirmDelete()) {
+  <nx-modal [title]="'Delete ' + issue()?.key + '?'" (closed)="confirmDelete.set(false)">
+    <div class="modal-body"><p>The issue, its comments and history are deleted permanently. Child issues are kept and lose their parent.</p></div>
+    <div class="modal-foot"><button class="btn ghost" (click)="confirmDelete.set(false)">Cancel</button><button class="btn danger" (click)="remove()">Delete</button></div>
+  </nx-modal>
+}

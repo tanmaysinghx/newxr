@@ -1,0 +1,94 @@
+@if (g(); as g) {
+<div class="page">
+  <div class="crumbs"><a routerLink="/goals">Goals</a>@if (g.parentId) { <span class="sep">/</span><a [routerLink]="['/goals', g.parentId]">{{ g.parentName }}</a> }</div>
+  <div class="title-bar">
+    <div class="row gap-12"><span class="gicon"><nx-icon name="target" [size]="18" /></span><h1>{{ g.name }}</h1></div>
+    <div class="actions"><nx-status [value]="g.status" />
+      <button class="btn" (click)="follow()"><nx-icon name="eye" [size]="14" /> {{ g.following ? 'Following' : 'Follow' }}</button>
+      <button class="btn primary" (click)="posting.set(true)"><nx-icon name="megaphone" [size]="14" /> Post update</button></div>
+  </div>
+  <div class="layout">
+    <div class="col gap-16">
+      @if (g.metricName && chart(); as c) {
+        <div class="card">
+          <div class="card-head"><h3>{{ g.metricName }}</h3>
+            <span class="small"><span class="warning-text">Target {{ g.metricTarget }}{{ g.metricUnit }}</span> · Now {{ g.metricCurrent }}{{ g.metricUnit }}</span></div>
+          <div class="legend mb-8"><span class="key"><span class="ln" style="background:var(--series-1)"></span>Actual</span><span class="key"><span class="ln dash"></span>Plan</span></div>
+          <div class="chart">
+            <svg #sv [attr.viewBox]="'0 0 ' + W + ' ' + H" role="img" [attr.aria-label]="g.metricName + ': actual against plan'" (pointermove)="move($event, sv)" (pointerleave)="hover.set(null)">
+              @for (t of c.ticks; track t.y) { <line class="gridline" [attr.x1]="P.l" [attr.x2]="W - P.r" [attr.y1]="t.y" [attr.y2]="t.y" /><text class="axis" [attr.x]="P.l - 6" [attr.y]="t.y + 4" text-anchor="end">{{ t.v }}</text> }
+              @for (l of c.xl; track l.x) { <text class="axis" [attr.x]="l.x" [attr.y]="H - 6" [attr.text-anchor]="$first ? 'start' : 'end'">{{ l.t }}</text> }
+              <path [attr.d]="c.planPath" fill="none" stroke="var(--text-subtle)" stroke-width="1.5" stroke-dasharray="4 4" />
+              <path [attr.d]="c.actualPath" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round" />
+              @if (c.last; as l) { <circle [attr.cx]="c.x(l.at)" [attr.cy]="c.y(l.actual!)" r="4" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2" /> }
+              @if (hover() != null) { <line [attr.x1]="c.x(c.actual[hover()!].at)" [attr.x2]="c.x(c.actual[hover()!].at)" [attr.y1]="P.t" [attr.y2]="H - P.b" stroke="var(--border-strong)" /> }
+            </svg>
+            @if (hover() != null) {
+              <div class="tip" [style.left.%]="c.x(c.actual[hover()!].at) / W * 100" [style.top.%]="c.y(c.actual[hover()!].actual!) / H * 100">
+                <div class="t">{{ shortDate(c.actual[hover()!].at) }}</div>
+                <div class="r"><span class="ln" style="background:var(--series-1)"></span>Actual<b>{{ c.actual[hover()!].actual }}{{ g.metricUnit }}</b></div>
+                <div class="r"><span class="ln" style="background:var(--text-subtle)"></span>Plan<b>{{ c.actual[hover()!].plan?.toFixed(2) }}{{ g.metricUnit }}</b></div>
+              </div>
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="card"><div class="row between"><h3>Progress</h3><span class="strong">{{ g.progress }}%</span></div>
+          <div class="progress mt-8" [class]="'progress mt-8 ' + tone(g.status)"><span [style.width.%]="g.progress"></span></div></div>
+      }
+      @if (g.description) { <div class="card"><h3 class="mb-8">About this goal</h3><p class="muted" style="margin:0">{{ g.description }}</p></div> }
+      @if (g.children.length) {
+        <div class="card flush"><div class="card-head" style="padding:14px 16px 4px;margin:0"><h3>Sub-goals</h3></div>
+          @for (c of g.children; track c.id) { <a class="list-row" [routerLink]="['/goals', c.id]"><nx-icon name="target" [size]="15" style="color:var(--goals)" />
+            <span class="grow truncate">{{ c.name }}</span><nx-status [value]="c.status" /><span class="small muted">{{ c.progress }}%</span></a> }</div>
+      }
+      <h3>Updates</h3>
+      @for (u of g.updates; track u.id) {
+        <div class="card col">
+          <div class="row"><nx-avatar [user]="u.author" [size]="28" /><div class="grow"><div class="strong small">{{ u.author?.name }}</div><div class="tiny subtle">Week of {{ longDate(u.createdAt) }}</div></div><nx-status [value]="u.status" /></div>
+          <div style="font-size:13.5px">{{ u.body }}</div>
+          <div class="row small"><button class="cheer" (click)="cheer(u)">👏 {{ u.cheers }}</button>@if (u.metricValue != null) { <span class="subtle">{{ g.metricName }}: {{ u.metricValue }}{{ g.metricUnit }}</span> }</div>
+        </div>
+      } @empty { <div class="card small muted">No updates yet. Post one every week so followers know how it's going.</div> }
+    </div>
+    <aside class="col gap-16">
+      <div class="card"><h4 class="mb-8">About</h4>
+        <dl><dt>Owner</dt><dd><select class="input bare" [ngModel]="g.owner?.id" (ngModelChange)="setOwner($event)">@for (u of people.all(); track u.id) { <option [ngValue]="u.id">{{ u.name }}</option> }</select></dd>
+          <dt>Team</dt><dd>{{ g.team ?? '—' }}</dd>
+          <dt>Parent</dt><dd>@if (g.parentId) { <a [routerLink]="['/goals', g.parentId]">{{ g.parentName }}</a> } @else { — }</dd>
+          <dt>Target date</dt><dd>{{ longDate(g.targetDate) }}</dd>
+          <dt>Progress</dt><dd>{{ g.progress }}%</dd>
+          <dt>Followers</dt><dd><nx-avatars [users]="g.followers" [size]="22" /></dd></dl></div>
+      <div class="card"><div class="row between mb-8"><h4>Contributing work</h4><button class="btn ghost sm icon" (click)="linking.set(true)" aria-label="Link work"><nx-icon name="plus" [size]="14" /></button></div>
+        @for (l of g.links; track l.id) {
+          <div class="row link-row"><nx-app-tile [app]="l.app" [size]="18" /><a class="grow truncate small" [routerLink]="l.link">{{ l.title }}</a>@if (l.status) { <nx-status [value]="l.status" /> }
+            <button class="btn ghost sm icon" (click)="removeLink(l.id)" aria-label="Remove link"><nx-icon name="x" [size]="12" /></button></div>
+        } @empty { <div class="small muted">Link the issues, pages and alerts that move this goal.</div> }</div>
+    </aside>
+  </div>
+</div>
+}
+@if (posting()) {
+  <nx-modal title="Post an update" (closed)="posting.set(false)">
+    <div class="modal-body">
+      <div class="field"><label>How is it going?</label><div class="row wrap">@for (s of statuses; track s) {
+        <button class="btn sm" [class.primary]="up.status === s" (click)="up.status = s">{{ label(s) }}</button> }</div></div>
+      <div class="form-grid">
+        @if (g()?.metricName) { <div class="field"><label>{{ g()?.metricName }} now ({{ g()?.metricUnit }})</label><input class="input" type="number" step="any" [(ngModel)]="up.metricValue" /></div> }
+        @else { <div class="field"><label>Progress (%)</label><input class="input" type="number" min="0" max="100" [(ngModel)]="up.progress" /></div> }
+      </div>
+      <div class="field"><label>What changed this week?</label><textarea class="input" rows="5" [(ngModel)]="up.body"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" (click)="posting.set(false)">Cancel</button><button class="btn primary" (click)="post()">Post update</button></div>
+  </nx-modal>
+}
+@if (linking()) {
+  <nx-modal title="Link contributing work" (closed)="linking.set(false)">
+    <div class="modal-body">
+      <div class="field"><label>App</label><select class="input" [(ngModel)]="link.app"><option value="track">Track issue</option><option value="pages">Pages page</option><option value="boards">Boards card</option><option value="pulse">Pulse alert</option><option value="code">Code pull request</option></select></div>
+      <div class="field"><label>Title</label><input class="input" [(ngModel)]="link.title" placeholder="ORB-388 Map rotation crash" /></div>
+      <div class="field"><label>Newxr link</label><input class="input mono" [(ngModel)]="link.link" placeholder="/track/issue/ORB-388" /><span class="hint">Copy the path from the address bar.</span></div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" (click)="linking.set(false)">Cancel</button><button class="btn primary" (click)="addLink()">Link</button></div>
+  </nx-modal>
+}

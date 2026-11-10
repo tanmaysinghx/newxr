@@ -58,6 +58,8 @@ public class SecurityConfig {
                 .anyRequest().permitAll())
             .csrf(csrf -> csrf.spa())
             .addFilterAfter(new CsrfCookieFilter(), org.springframework.security.web.csrf.CsrfFilter.class)
+            .addFilterBefore(new PortalAvailabilityFilter(registrations),
+                    org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.class)
             .exceptionHandling(e -> e.defaultAuthenticationEntryPointFor(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED), api))
             .formLogin(f -> f.disable())
             .httpBasic(b -> b.disable())
@@ -86,6 +88,30 @@ public class SecurityConfig {
                 new DefaultOAuth2AuthorizationRequestResolver(registrations, "/oauth2/authorization");
         r.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
         return r;
+    }
+
+    /**
+     * "Continue with SSO" while Portal SSO is not configured or not reachable: back to the sign-in
+     * page with a reason, rather than an error page.
+     */
+    static final class PortalAvailabilityFilter extends OncePerRequestFilter {
+        private final PortalClientRegistrations registrations;
+
+        PortalAvailabilityFilter(PortalClientRegistrations registrations) {
+            this.registrations = registrations;
+        }
+
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+                throws ServletException, IOException {
+            String path = request.getRequestURI().substring(request.getContextPath().length());
+            if (path.startsWith("/oauth2/authorization/")
+                    && registrations.findByRegistrationId(PortalClientRegistrations.REGISTRATION_ID) == null) {
+                response.sendRedirect(request.getContextPath() + "/login?error=sso_unavailable");
+                return;
+            }
+            chain.doFilter(request, response);
+        }
     }
 
     /** Makes sure the XSRF-TOKEN cookie exists before the SPA's first POST (tokens are deferred). */

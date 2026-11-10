@@ -1,0 +1,16 @@
+:host { display: flex; flex-direction: column; min-height: 100vh; background: var(--surface); }
+.bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.bar a { text-decoration: none !important; }
+.crumbs { font-size: 13px; }
+.toolbar { position: sticky; top: 52px; z-index: 19; display: flex; justify-content: center; gap: 2px; padding: 6px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.toolbar button { width: 30px; height: 30px; border: 0; background: none; border-radius: 6px; color: var(--text-muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.toolbar button:hover { background: var(--surface-hover); color: var(--text); }
+.toolbar .sep { width: 1px; background: var(--border); margin: 4px 6px; }
+.canvas { flex: 1; display: flex; justify-content: center; padding: 36px 24px 80px; }
+.doc { width: 100%; max-width: 760px; }
+.title-input { width: 100%; border: 0; outline: 0; background: none; font: 700 30px var(--font); color: var(--text); margin-bottom: 18px; letter-spacing: -.01em; }
+.title-view { font-size: 30px; margin-bottom: 18px; }
+.anchor { position: relative; }
+.body-input { width: 100%; min-height: 420px; border: 0; outline: 0; resize: none; background: none; font: 14.5px/1.75 var(--font); color: var(--text); overflow: hidden; }
+.insert-menu { top: 0; left: 0; width: 280px; }
+.floating { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); }

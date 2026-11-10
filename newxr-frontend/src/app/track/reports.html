@@ -1,0 +1,100 @@
+<div class="page">
+  <div class="crumbs"><a routerLink="/track">Projects</a><span class="sep">/</span><span>{{ key() }}</span></div>
+  <div class="title-bar"><h1>Sprint report</h1>
+    <div class="actions">
+      <select class="input" style="width:auto" [(ngModel)]="sprintId" (ngModelChange)="load()">
+        @for (s of r()?.sprints ?? []; track s.id) { <option [ngValue]="s.id">{{ s.name }}{{ s.state === 'ACTIVE' ? ' (active)' : '' }}</option> }</select>
+      <button class="btn" (click)="showTable.set(!showTable())"><nx-icon name="table" /> {{ showTable() ? 'Charts' : 'Table view' }}</button>
+    </div>
+  </div>
+
+  @if (r(); as r) {
+    @if (!r.sprint) { <div class="card empty">Start a sprint to see its report.</div> }
+    @else {
+    <div class="grid grid-4">
+      <div class="card"><div class="stat-label"><nx-icon name="flag" [size]="14" /> Committed</div><div class="stat-value">{{ r.committedPoints }} pts</div><div class="stat-note muted">{{ r.committedIssues }} issues</div></div>
+      <div class="card"><div class="stat-label"><nx-icon name="check-circle" [size]="14" /> Completed</div><div class="stat-value">{{ r.completedPoints }} pts</div><div class="stat-note success-text">{{ pctDone() }}% of commitment</div></div>
+      <div class="card"><div class="stat-label"><nx-icon name="arrow-up" [size]="14" /> Scope change</div><div class="stat-value">+{{ r.addedPoints }} pts</div><div class="stat-note warning-text">{{ r.addedIssues }} issue{{ r.addedIssues === 1 ? '' : 's' }} added</div></div>
+      <div class="card"><div class="stat-label"><nx-icon name="clock" [size]="14" /> Avg cycle time</div><div class="stat-value">{{ r.avgCycleDays != null ? r.avgCycleDays + ' d' : '—' }}</div>
+        <div class="stat-note" [class.success-text]="(cycleDelta() ?? 0) <= 0" [class.danger-text]="(cycleDelta() ?? 0) > 0">{{ cycleDelta() != null ? (cycleDelta()! > 0 ? '+' : '') + cycleDelta() + ' d vs last sprint' : 'Start to done' }}</div></div>
+    </div>
+
+    @if (showTable()) {
+      <div class="card flush"><div class="table-wrap"><table class="table">
+        <thead><tr><th>Day</th><th class="right">Remaining (pts)</th><th class="right">Guideline (pts)</th></tr></thead>
+        <tbody>@for (p of r.burndown; track $index) { <tr><td>{{ p.label }}</td><td class="right">{{ p.value < 0 ? '—' : p.value }}</td><td class="right">{{ p.guide.toFixed(1) }}</td></tr> }</tbody></table></div></div>
+      <div class="card flush"><div class="table-wrap"><table class="table">
+        <thead><tr><th>Sprint</th><th class="right">Committed</th><th class="right">Completed</th></tr></thead>
+        <tbody>@for (v of r.velocity; track v.sprint) { <tr><td>{{ v.sprint }}</td><td class="right">{{ v.committed }}</td><td class="right">{{ v.completed }}</td></tr> }</tbody></table></div></div>
+    } @else {
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-head"><h3>Burndown</h3>
+          <div class="legend"><span class="key"><span class="ln" style="background:var(--series-1)"></span>Remaining</span><span class="key"><span class="ln dash"></span>Guideline</span></div></div>
+        <div class="chart">
+          <svg #bs [attr.viewBox]="'0 0 ' + W + ' ' + H" role="img" aria-label="Burndown: remaining story points per day" (pointermove)="burnMove($event, bs)" (pointerleave)="burnHover.set(null)">
+            @for (t of burn().ticks; track t.v) { <line class="gridline" [attr.x1]="PL" [attr.x2]="W - 12" [attr.y1]="t.y" [attr.y2]="t.y" /><text class="axis" [attr.x]="PL - 6" [attr.y]="t.y + 4" text-anchor="end">{{ t.v }}</text> }
+            @for (l of burn().xLabels; track l.i) { <text class="axis" [attr.x]="l.x" [attr.y]="H - 8" text-anchor="middle">{{ l.label }}</text> }
+            <path [attr.d]="burn().guide" fill="none" stroke="var(--text-subtle)" stroke-width="1.5" stroke-dasharray="4 4" />
+            <path [attr.d]="burn().line" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+            @if (burn().last; as last) {
+              <circle [attr.cx]="burn().x(last.i)" [attr.cy]="burn().y(last.v)" r="4" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2" />
+              <text class="axis" [attr.x]="burn().x(last.i) + 8" [attr.y]="burn().y(last.v) - 8" style="fill:var(--text)">{{ last.v }} pts left</text>
+            }
+            @if (burnHover() != null) {
+              <line [attr.x1]="burn().x(burnHover()!)" [attr.x2]="burn().x(burnHover()!)" [attr.y1]="PT" [attr.y2]="H - PB" stroke="var(--border-strong)" />
+            }
+          </svg>
+          @if (burnHover() != null) {
+            <div class="tip" [style.left.%]="burn().x(burnHover()!) / W * 100" [style.top.%]="PT / H * 100 + 10">
+              <div class="t">{{ burn().pts[burnHover()!].label }}</div>
+              <div class="r"><span class="ln" style="background:var(--series-1)"></span>Remaining<b>{{ burn().pts[burnHover()!].value < 0 ? '—' : burn().pts[burnHover()!].value }}</b></div>
+              <div class="r"><span class="ln" style="background:var(--text-subtle)"></span>Guideline<b>{{ burn().pts[burnHover()!].guide.toFixed(1) }}</b></div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Velocity (last {{ r.velocity.length }} sprints)</h3>
+          <div class="legend"><span class="key"><span class="sw" style="background:var(--series-1)"></span>Committed</span><span class="key"><span class="sw" style="background:var(--series-2)"></span>Completed</span></div></div>
+        <div class="chart">
+          <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" role="img" aria-label="Velocity: committed and completed points per sprint" (pointerleave)="velHover.set(null)">
+            @for (t of vel().ticks; track t.v) { <line class="gridline" [attr.x1]="PL" [attr.x2]="W - 12" [attr.y1]="t.y" [attr.y2]="t.y" /><text class="axis" [attr.x]="PL - 6" [attr.y]="t.y + 4" text-anchor="end">{{ t.v }}</text> }
+            @for (b of vel().bars; track b.sprint) {
+              <rect [attr.x]="b.x1" [attr.y]="b.y1" [attr.width]="vel().bw" [attr.height]="vel().base - b.y1" rx="4" fill="var(--series-1)" [attr.opacity]="velHover() == null || velHover() === b.i ? 1 : .45" />
+              <rect [attr.x]="b.x2" [attr.y]="b.y2" [attr.width]="vel().bw" [attr.height]="vel().base - b.y2" rx="4" fill="var(--series-2)" [attr.opacity]="velHover() == null || velHover() === b.i ? 1 : .45" />
+              <rect [attr.x]="b.cx - vel().band / 2" [attr.y]="PT" [attr.width]="vel().band" [attr.height]="H - PT - PB" fill="transparent" (pointerenter)="velHover.set(b.i)" tabindex="0" (focus)="velHover.set(b.i)" />
+              <text class="axis" [attr.x]="b.cx" [attr.y]="H - 8" text-anchor="middle">{{ b.sprint }}</text>
+            }
+          </svg>
+          @if (velHover() != null) {
+            <div class="tip" [style.left.%]="vel().bars[velHover()!].cx / W * 100" [style.top.%]="vel().bars[velHover()!].y1 / H * 100">
+              <div class="t">{{ vel().bars[velHover()!].sprint }}</div>
+              <div class="r"><span class="ln" style="background:var(--series-1)"></span>Committed<b>{{ vel().bars[velHover()!].committed }} pts</b></div>
+              <div class="r"><span class="ln" style="background:var(--series-2)"></span>Completed<b>{{ vel().bars[velHover()!].completed }} pts</b></div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Issues by status</h3></div>
+        <div class="stack">@for (s of statusSegs(); track s.k) { @if (s.n) { <span [style.width.%]="s.pct" [style.background]="s.color" [title]="label(s.k) + ': ' + s.n"></span> } }</div>
+        @for (s of statusSegs(); track s.k) {
+          <div class="row status-row"><span class="sw" [style.background]="s.color"></span><span class="grow">{{ label(s.k) }}</span><b>{{ s.n }}</b></div>
+        }
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Workload by assignee</h3><span class="small muted">story points</span></div>
+        @for (w of r.workload; track w.user.id) {
+          <div class="row load-row"><nx-avatar [user]="w.user" [size]="20" /><span class="name truncate">{{ w.user.name }}</span>
+            <div class="bar"><span [style.width.%]="w.points * 100 / maxLoad()"></span></div><span class="small muted nowrap val">{{ w.points }} pts</span></div>
+        } @empty { <div class="small muted">No assigned issues in this sprint.</div> }
+      </div>
+    </div>
+    }
+    }
+  }
+</div>

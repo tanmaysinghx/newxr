@@ -1,0 +1,27 @@
+:host { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 12px; height: var(--nav-h); padding: 0 16px 0 12px;
+  background: var(--surface); border-bottom: 1px solid var(--border); }
+.left, .right { display: flex; align-items: center; gap: 4px; }
+.right { gap: 2px; }
+.brand { display: inline-flex; padding: 4px 6px; margin-right: 4px; text-decoration: none !important; }
+.spacer { flex: 1; }
+.anchor { position: relative; }
+.icon-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: 8px;
+  background: none; color: var(--text-muted); cursor: pointer; }
+.icon-btn:hover, .icon-btn.on { background: var(--surface-hover); color: var(--text); }
+.badge { position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--danger); color: #fff;
+  font: 700 10px/16px var(--font); text-align: center; }
+.search { flex: 0 1 520px; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; margin-left: auto; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface-sunken); color: var(--text-subtle); }
+.search:focus-within { border-color: var(--accent); background: var(--surface); }
+.search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: 13.5px var(--font); color: var(--text); }
+.create { height: 36px; padding: 0 14px; border-radius: 8px; }
+.avatar-btn { border: 0; background: none; padding: 3px; border-radius: 50%; cursor: pointer; display: inline-flex; margin-left: 4px; }
+.popover { top: 44px; }
+.switcher { left: 0; width: 320px; }
+.switcher .app { padding: 8px 10px; }
+.switcher .accent { color: var(--accent); }
+.create-menu { left: 0; width: 260px; }
+.account { right: 0; width: 260px; }
+.me { padding: 8px 10px 4px; }
+.signed { padding: 0 10px 4px; }
+@media (max-width: 760px) { .hide-sm { display: none; } .search { flex-basis: 160px; } .search .kbd { display: none; } }

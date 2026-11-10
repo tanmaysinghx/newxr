@@ -1,0 +1,10 @@
+.legend .ln.dash { background: repeating-linear-gradient(90deg, var(--text-subtle) 0 4px, transparent 4px 7px); }
+.stack { display: flex; gap: 2px; height: 10px; border-radius: 5px; overflow: hidden; margin: 4px 0 14px; }
+.stack span { display: block; height: 100%; }
+.status-row { padding: 5px 0; font-size: 13px; }
+.sw { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.load-row { padding: 6px 0; font-size: 13px; }
+.load-row .name { width: 120px; flex: none; }
+.load-row .bar { flex: 1; height: 8px; border-radius: 4px; background: var(--neutral-soft); overflow: hidden; }
+.load-row .bar span { display: block; height: 100%; background: var(--series-1); border-radius: 0 4px 4px 0; }
+.load-row .val { width: 52px; text-align: right; }

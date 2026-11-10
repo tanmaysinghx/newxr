@@ -1,0 +1,16 @@
+.block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px 0; }
+.block.over { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--surface-selected); }
+.block header { display: flex; align-items: center; gap: 8px; padding: 6px 12px 8px; flex-wrap: wrap; }
+.issue { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-top: 1px solid var(--border); cursor: grab; min-width: 0; }
+.issue:hover { background: var(--surface-hover); }
+.issue .key { width: 64px; flex: none; color: var(--text-muted); font-size: 12px; }
+.issue .summary { color: var(--text); }
+.grip { color: var(--text-subtle); flex: none; }
+.epic { font: 600 10.5px var(--font); color: var(--ai); background: var(--ai-soft); padding: 1px 6px; border-radius: 4px; max-width: 160px; }
+.pts { min-width: 22px; height: 18px; border-radius: 9px; background: var(--neutral-soft); font: 600 11px var(--font); display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; color: var(--text-muted); }
+.pts.todo { background: var(--neutral-soft); } .pts.prog { background: var(--info); color: #fff; } .pts.done { background: var(--success); color: #fff; }
+.ghost { opacity: .4; }
+.drop-hint { margin: 4px 12px 8px; padding: 14px; border: 1px dashed var(--border-strong); border-radius: 8px; text-align: center; color: var(--text-subtle); font-size: 12.5px; }
+.add { display: flex; align-items: center; gap: 6px; padding: 8px 14px 4px; color: var(--text-muted); font-size: 12.5px; text-decoration: none !important; border-top: 1px solid var(--border); }
+.add:hover { color: var(--text); }
+@media (max-width: 760px) { .hide-sm, .epic { display: none; } }

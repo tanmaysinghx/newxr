@@ -1,0 +1,129 @@
+@if (data(); as d) {
+<div class="surface" [style.background]="bg(d.board.background)">
+  <header class="bar">
+    <span class="name">{{ d.board.name }}</span>
+    <button class="ghost-btn icon" (click)="star()" [attr.aria-label]="starred() ? 'Unstar board' : 'Star board'"><nx-icon name="star" [size]="15" [style.color]="starred() ? '#ffd166' : null" /></button>
+    <span class="pill"><nx-icon [name]="d.board.visibility === 'PRIVATE' ? 'lock' : 'users'" [size]="13" /> {{ d.board.visibility === 'PRIVATE' ? 'Private' : 'Workspace visible' }}</span>
+    <span class="grow"></span>
+    <div class="anchor"><button class="ghost-btn" (click)="bgOpen.set(!bgOpen())"><nx-icon name="image" [size]="14" /> Background</button>
+      @if (bgOpen()) { <div class="popover bgs">@for (b of backgrounds; track b) { <button [style.background]="bg(b)" (click)="setBackground(b)" [attr.aria-label]="b"></button> }</div> }</div>
+    <nx-avatars [users]="d.board.members" [size]="26" />
+    <a class="ghost-btn" routerLink="/boards"><nx-icon name="grid" [size]="14" /> All boards</a>
+  </header>
+  <div class="lists">
+    @for (l of d.lists; track l.id) {
+      <section class="list" [class.over]="overList() === l.id" (dragover)="$event.preventDefault(); overList.set(l.id)" (dragleave)="overList.set(null)" (drop)="drop($event, l.id)">
+        <header><input class="list-name" [value]="l.name" (change)="renameList(l.id, $any($event.target).value)" [attr.aria-label]="'List name ' + l.name" />
+          <span class="count">{{ l.cards.length }}</span>
+          <button class="mini" (click)="archiveList(l.id)" title="Archive list"><nx-icon name="x" [size]="13" /></button></header>
+        <div class="cards">
+          @for (c of l.cards; track c.id) {
+            <article class="card-item" draggable="true" (dragstart)="dragging.set(c)" (dragend)="dragging.set(null)" (dragover)="overCard.set(c.id)"
+              (click)="open(c)" [class.ghost]="dragging()?.id === c.id" tabindex="0" (keydown.enter)="open(c)">
+              @if (c.cover) { <div class="cover" [style.background]="bg(c.cover)"></div> }
+              <div class="pad">
+                @if (c.labels.length) { <div class="labels">@for (lb of c.labels; track lb) { <span class="label" [style.background]="labelColor(lb)">{{ lb }}</span> }</div> }
+                <div class="title">{{ c.title }}</div>
+                <div class="badges">
+                  @if (c.due) { <span class="badge due" [class]="'badge due ' + dueState(c)"><nx-icon [name]="c.dueDone ? 'check' : 'clock'" [size]="12" />{{ c.dueDone ? 'Done' : shortDate(c.due) }}</span> }
+                  @if (c.hasDescription) { <nx-icon name="menu" [size]="13" class="subtle" /> }
+                  @if (c.checkTotal) { <span class="badge" [class.complete]="c.checkDone === c.checkTotal"><nx-icon name="checklist" [size]="12" />{{ c.checkDone }}/{{ c.checkTotal }}</span> }
+                  @if (c.comments) { <span class="badge plain"><nx-icon name="message" [size]="12" />{{ c.comments }}</span> }
+                  <span class="grow"></span><nx-avatars [users]="c.members" [size]="22" [max]="3" />
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+        @if (adding() === l.id) {
+          <div class="composer"><textarea class="input" rows="2" [(ngModel)]="newCard" placeholder="Enter a title for this card…" (keydown.enter)="$event.preventDefault(); addCard(l.id)" (keydown.escape)="adding.set(null)" autofocus></textarea>
+            <div class="row"><button class="btn primary sm" (click)="addCard(l.id)">Add card</button><button class="btn ghost sm icon" (click)="adding.set(null)"><nx-icon name="x" /></button></div></div>
+        } @else { <button class="add" (click)="adding.set(l.id); newCard = ''"><nx-icon name="plus" [size]="14" /> Add a card</button> }
+      </section>
+    }
+    @if (addingList()) {
+      <div class="list add-list-form"><input class="input" [(ngModel)]="newList" placeholder="List name" (keydown.enter)="addList()" (keydown.escape)="addingList.set(false)" autofocus />
+        <div class="row mt-8"><button class="btn primary sm" (click)="addList()">Add list</button><button class="btn ghost sm icon" (click)="addingList.set(false)"><nx-icon name="x" /></button></div></div>
+    } @else { <button class="add-list" (click)="addingList.set(true)"><nx-icon name="plus" [size]="14" /> Add another list</button> }
+  </div>
+</div>
+}
+
+@if (card(); as c) {
+<div class="backdrop" (mousedown)="$event.target === $event.currentTarget && close()" (keydown.escape)="close()">
+  <div class="modal card-modal" role="dialog" aria-modal="true" [attr.aria-label]="c.title">
+    @if (c.cover) { <div class="modal-cover" [style.background]="bg(c.cover)"></div> }
+    <button class="btn ghost icon close" (click)="close()" aria-label="Close"><nx-icon name="x" /></button>
+    <div class="cm-body">
+      <div class="cm-main">
+        <div class="row" style="align-items:flex-start"><nx-icon name="card" [size]="18" style="margin-top:6px" />
+          <div class="grow"><input class="cm-title" [value]="c.title" (change)="saveTitle($any($event.target).value)" aria-label="Card title" />
+            <div class="small muted">in list <b>{{ c.listName }}</b> · {{ c.boardName }}</div></div></div>
+
+        <div class="row wrap meta-row">
+          @if (c.members.length) { <div class="col gap-4"><span class="label-sm">Members</span><nx-avatars [users]="c.members" [size]="26" /></div> }
+          @if (c.labels.length) { <div class="col gap-4"><span class="label-sm">Labels</span><div class="row gap-4 wrap">@for (l of c.labels; track l) { <span class="label" [style.background]="labelColor(l)">{{ l }}</span> }</div></div> }
+          @if (c.due) { <div class="col gap-4"><span class="label-sm">Due date</span>
+            <label class="row small"><input type="checkbox" [checked]="c.dueDone" (change)="toggleDueDone()" /> {{ shortDate(c.due) }}
+              <span class="badge due" [class]="'badge due ' + dueState(c)">{{ c.dueDone ? 'COMPLETE' : dueState(c) === 'overdue' ? 'OVERDUE' : dueState(c) === 'soon' ? 'DUE SOON' : '' }}</span></label></div> }
+        </div>
+
+        <section><h4><nx-icon name="menu" [size]="15" /> Description</h4>
+          @if (editingDesc()) {
+            <textarea class="input" rows="6" [(ngModel)]="desc"></textarea>
+            <div class="row mt-8"><button class="btn primary sm" (click)="saveDesc()">Save</button><button class="btn ghost sm" (click)="editingDesc.set(false)">Cancel</button></div>
+          } @else if (c.description) { <div class="prose" style="font-size:13.5px" [innerHTML]="descHtml()" (click)="editDesc()"></div> }
+          @else { <button class="placeholder" (click)="editDesc()">Add a more detailed description…</button> }
+        </section>
+
+        <section><div class="row between"><h4><nx-icon name="checklist" [size]="15" /> Checklist</h4><span class="small muted">{{ checkPct() }}%</span></div>
+          <div class="progress accent" style="margin-bottom:8px"><span [style.width.%]="checkPct()"></span></div>
+          @for (x of c.checklist; track $index) {
+            <div class="row check-row"><label class="check grow"><input type="checkbox" [checked]="x.done" (change)="toggleCheck($index)" /><span [class.done]="x.done">{{ x.text }}</span></label>
+              <button class="mini dark" (click)="removeCheck($index)" aria-label="Remove item"><nx-icon name="x" [size]="12" /></button></div>
+          }
+          <input class="input mt-8" [(ngModel)]="newCheck" placeholder="Add an item" (keydown.enter)="addCheck()" />
+        </section>
+
+        @if (c.linkedIssue) { <section><h4><nx-icon name="board" [size]="15" /> Linked issue</h4><a [routerLink]="['/track/issue', c.linkedIssue]">{{ c.linkedIssue }}</a></section> }
+
+        <section><h4><nx-icon name="message" [size]="15" /> Activity</h4>
+          <div class="row" style="align-items:flex-start"><nx-avatar [user]="auth.me()" [size]="28" />
+            <div class="grow col"><textarea class="input" rows="2" [(ngModel)]="newComment" placeholder="Add a comment…"></textarea>
+              <div><button class="btn primary sm" (click)="comment()" [disabled]="!newComment.trim()">Save</button></div></div></div>
+          @for (m of c.comments; track m.id) {
+            <div class="row comment" style="align-items:flex-start"><nx-avatar [user]="m.author" [size]="28" />
+              <div class="grow"><div class="row"><b class="small">{{ m.author?.name }}</b><span class="tiny subtle">{{ ago(m.createdAt) }}</span></div>
+                <div class="prose" style="font-size:13px" [innerHTML]="md(m.body)"></div></div></div>
+          }
+        </section>
+      </div>
+
+      <aside class="cm-side">
+        <div class="label-sm">Add to card</div>
+        <div class="anchor"><button class="side-btn" (click)="panel.set(panel() === 'members' ? null : 'members')"><nx-icon name="user" [size]="14" /> Members</button>
+          @if (panel() === 'members') { <div class="popover side-pop">@for (u of people.all(); track u.id) {
+            <button class="menu-item" (click)="toggleMember(u.id)"><nx-avatar [user]="u" [size]="22" /><span class="grow">{{ u.name }}</span>@if (isMember(u.id)) { <nx-icon name="check" [size]="14" /> }</button> }</div> }</div>
+        <div class="anchor"><button class="side-btn" (click)="panel.set(panel() === 'labels' ? null : 'labels')"><nx-icon name="tag" [size]="14" /> Labels</button>
+          @if (panel() === 'labels') { <div class="popover side-pop">@for (l of allLabels(); track l) {
+            <button class="menu-item" (click)="toggleLabel(l)"><span class="label" [style.background]="labelColor(l)">{{ l }}</span><span class="grow"></span>@if (c.labels.includes(l)) { <nx-icon name="check" [size]="14" /> }</button> }
+            <div class="row" style="padding:6px"><input class="input" [(ngModel)]="newLabel" placeholder="New label" (keydown.enter)="addLabel()" /></div></div> }</div>
+        <div class="anchor"><button class="side-btn" (click)="panel.set(panel() === 'dates' ? null : 'dates')"><nx-icon name="clock" [size]="14" /> Dates</button>
+          @if (panel() === 'dates') { <div class="popover side-pop" style="padding:10px"><div class="field"><label>Due date</label><input class="input" type="datetime-local" [(ngModel)]="dueLocal" /></div>
+            <div class="row mt-8"><button class="btn primary sm" (click)="saveDue(); panel.set(null)">Save</button><button class="btn ghost sm" (click)="dueLocal = ''; saveDue(); panel.set(null)">Remove</button></div></div> }</div>
+        <div class="anchor"><button class="side-btn" (click)="panel.set(panel() === 'cover' ? null : 'cover')"><nx-icon name="image" [size]="14" /> Cover</button>
+          @if (panel() === 'cover') { <div class="popover side-pop covers">@for (b of backgrounds; track b) { <button [style.background]="bg(b)" (click)="setCover(b); panel.set(null)" [attr.aria-label]="b"></button> }
+            <button class="btn sm" style="grid-column:1/-1" (click)="setCover(null); panel.set(null)">Remove cover</button></div> }</div>
+        <div class="label-sm mt-8">Power-ups</div>
+        <div class="anchor"><button class="side-btn" (click)="panel.set(panel() === 'link' ? null : 'link')"><nx-icon name="board" [size]="14" /> Link Track issue</button>
+          @if (panel() === 'link') { <div class="popover side-pop" style="padding:10px"><input class="input mono" [(ngModel)]="linkIssue" placeholder="ORB-412" (keydown.enter)="saveLink()" />
+            <div class="row mt-8"><button class="btn primary sm" (click)="saveLink()">Link</button></div></div> }</div>
+        <div class="label-sm mt-8">Actions</div>
+        <div class="anchor"><button class="side-btn" (click)="panel.set(panel() === 'move' ? null : 'move')"><nx-icon name="arrow-right" [size]="14" /> Move</button>
+          @if (panel() === 'move') { <div class="popover side-pop">@for (l of data()?.lists ?? []; track l.id) { <button class="menu-item" [class.active]="l.id === c.listId" (click)="moveTo(l.id)">{{ l.name }}</button> }</div> }</div>
+        <button class="side-btn" (click)="archiveCard()"><nx-icon name="folder" [size]="14" /> Archive</button>
+      </aside>
+    </div>
+  </div>
+</div>
+}

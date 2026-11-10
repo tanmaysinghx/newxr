@@ -1,0 +1,16 @@
+:host { display: grid; grid-template-columns: minmax(360px, 1fr) 1fr; min-height: 100vh; background: var(--surface); }
+.form-side { display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+.form { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; }
+h1 { font-size: 22px; margin-top: 18px; }
+.or { display: flex; align-items: center; gap: 10px; color: var(--text-subtle); font-size: 12px; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.admin-link { align-self: center; }
+.legal { margin-top: 18px; }
+.hero { background: linear-gradient(135deg, #14122b 0%, #2b2470 55%, #5a4bf5 140%); color: #f2f1ff; display: flex; align-items: center; padding: 48px; }
+.hero-inner { max-width: 520px; }
+.hero h2 { font-size: 30px; font-weight: 700; margin-bottom: 14px; }
+.hero p { color: #c9c6ec; font-size: 15px; line-height: 1.6; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.chip-app { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 7px; border-radius: 8px; background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12); font-weight: 500; font-size: 13px; }
+@media (max-width: 860px) { :host { grid-template-columns: 1fr; } .hero { display: none; } }

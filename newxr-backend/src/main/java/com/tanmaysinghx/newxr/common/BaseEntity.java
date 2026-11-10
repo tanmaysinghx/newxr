@@ -29,10 +29,13 @@ public abstract class BaseEntity {
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
+        // Pre-set timestamps are kept (imports and sample data back-date records).
         if (createdAt == null) {
             createdAt = now;
         }
-        updatedAt = now;
+        if (updatedAt == null) {
+            updatedAt = now;
+        }
     }
 
     @PreUpdate
