@@ -1,0 +1,81 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '4.1.2'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.tanmaysinghx'
+version = '1.0.0'
+description = 'Newxr — self-hosted suite for software, knowledge, service and operations teams'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+
+	// Optional event streaming. Plain client (no Spring Kafka auto-configuration) so an
+	// install without Kafka never tries to reach a broker.
+	implementation 'org.apache.kafka:kafka-clients'
+
+	// Embedded database for evaluation; PostgreSQL / MySQL for production.
+	runtimeOnly 'com.h2database:h2'
+	runtimeOnly 'org.postgresql:postgresql'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+// ---------------------------------------------------------------------------------------
+// Single jar: the Angular build (newxr-frontend/dist/newxr-frontend/browser) is copied into
+// the jar's static resources. Run ../build.sh, or `./gradlew bootJar -PwithFrontend` after
+// `npm run build` in newxr-frontend.
+// ---------------------------------------------------------------------------------------
+def frontendDist = file('../newxr-frontend/dist/newxr-frontend/browser')
+
+tasks.register('buildFrontend', Exec) {
+	description = 'Builds the Angular console (npm ci + npm run build).'
+	workingDir file('../newxr-frontend')
+	commandLine 'sh', '-c', '[ -d node_modules ] || npm ci; npm run build'
+}
+
+tasks.named('processResources') {
+	if (project.hasProperty('withFrontend')) {
+		dependsOn 'buildFrontend'
+	}
+	from(frontendDist) {
+		into 'static'
+	}
+}
+
+tasks.named('bootJar') {
+	archiveFileName = 'newxr.jar'
+}
+
+tasks.named('jar') {
+	enabled = false
+}

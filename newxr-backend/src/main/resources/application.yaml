@@ -1,0 +1,65 @@
+# Built-in defaults. Operators override these in <newxr home>/newxr.properties (written on first
+# start with every option commented out), with environment variables, or with --command-line args.
+spring:
+  application:
+    name: newxr
+  # The data source defaults to an embedded H2 file in <newxr home>/data; see
+  # DatabaseEnvironmentPostProcessor. Set spring.datasource.url for PostgreSQL or MySQL.
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        default_batch_fetch_size: 50
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
+  threads:
+    virtual:
+      enabled: true
+  jackson:
+    # Jackson 3 rejects a missing boolean/int in a request body by default; treat it as false/0.
+    deserialization:
+      fail-on-null-for-primitives: false
+      fail-on-unknown-properties: false
+
+server:
+  port: ${NEWXR_PORT:8080}
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:NATIVE}
+  servlet:
+    session:
+      timeout: 12h
+      cookie:
+        name: NEWXR_SESSION
+        http-only: true
+        same-site: lax
+  error:
+    include-message: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+newxr:
+  # Public address users reach this server on. Used for Portal SSO redirect URIs and links.
+  public-url: ${NEWXR_PUBLIC_URL:}
+  security:
+    max-failed-logins: 5
+    lockout-duration: 15m
+  # First administrator without the wizard (both must be set). Remove after first sign-in.
+  bootstrap:
+    admin-email: ${NEWXR_BOOTSTRAP_ADMIN_EMAIL:}
+    admin-password: ${NEWXR_BOOTSTRAP_ADMIN_PASSWORD:}
+
+logging:
+  level:
+    org.apache.kafka: WARN
+    org.hibernate.orm.deprecation: ERROR
