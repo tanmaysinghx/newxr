@@ -32,5 +32,7 @@ public class ServiceRequest extends BaseEntity {
     private Instant resolutionDue;
     private Instant firstRespondedAt;
     private Instant resolvedAt;
+    /** Set while waiting for the customer; SLA clocks stop and resume with the paused time added back. */
+    private Instant slaPausedAt;
     private Integer csat;
 }

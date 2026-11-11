@@ -18,6 +18,11 @@ export const routes: Routes = [
     title: 'Edit · Pages',
   },
   {
+    path: 'help',
+    canActivate: [authGuard],
+    loadChildren: () => import('./desk/desk.routes').then(m => m.HELP_ROUTES),
+  },
+  {
     path: '',
     component: Shell,
     canActivate: [authGuard],
@@ -25,6 +30,7 @@ export const routes: Routes = [
       { path: 'pages', loadChildren: () => import('./pages/pages.routes').then(m => m.PAGES_ROUTES) },
       { path: 'boards', loadChildren: () => import('./boards/boards.routes').then(m => m.BOARDS_ROUTES) },
       { path: 'goals', loadChildren: () => import('./goals/goals.routes').then(m => m.GOALS_ROUTES) },
+      { path: 'desk', loadChildren: () => import('./desk/desk.routes').then(m => m.DESK_ROUTES) },
       { path: 'track', loadChildren: () => import('./track/track.routes').then(m => m.TRACK_ROUTES) },
       {
         path: '',

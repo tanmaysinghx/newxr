@@ -10,6 +10,11 @@ import org.springframework.data.jpa.repository.Query;
 public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, Long> {
     Optional<ServiceRequest> findByRequestKeyIgnoreCase(String key);
     List<ServiceRequest> findByDeskOrderByCreatedAtDesc(ServiceDesk desk);
+    List<ServiceRequest> findByReporterOrderByCreatedAtDesc(User reporter);
+    List<ServiceRequest> findByDeskAndReporter(ServiceDesk desk, User reporter);
+    long countByDeskAndStatusNotIn(ServiceDesk desk, List<String> statuses);
+    long countByReporterAndStatusNotIn(User reporter, List<String> statuses);
+    long countByType(RequestType type);
     List<ServiceRequest> findByReporterOrderByCreatedAtDesc(User reporter, Pageable page);
     List<ServiceRequest> findByAssigneeAndStatusNotInOrderByUpdatedAtDesc(User assignee, List<String> statuses);
     List<ServiceRequest> findByTypeAndStatusInAndIdNotOrderByResolvedAtDesc(RequestType type, List<String> statuses, Long id, Pageable page);

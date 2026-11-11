@@ -103,7 +103,7 @@ export class TopNav {
     { app: 'pages', kind: 'page', label: 'Page', hint: 'Write in a space', link: '/pages' },
     { app: 'boards', kind: 'board', label: 'Board', hint: 'Lists and cards', link: '/boards' },
     { app: 'code', kind: 'repo', label: 'Repository', hint: 'Git repository', link: '/code' },
-    { app: 'desk', kind: 'request', label: 'Request', hint: 'Raise a service request', link: '/desk' },
+    { app: 'desk', kind: 'request', label: 'Request', hint: 'Raise a service request', link: '/help' },
     { app: 'pulse', kind: 'alert', label: 'Alert', hint: 'Page whoever is on call', link: '/pulse' },
     { app: 'goals', kind: 'goal', label: 'Goal', hint: 'Set an outcome to track', link: '/goals' },
   ].filter(c => this.auth.me()?.apps.includes(c.app)));

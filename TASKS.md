@@ -65,10 +65,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do
 ## Stage 5 — Boards, Goals, Desk, Pulse, Code
 - [x] Boards: boards, lists, cards, labels, drag & drop, card dialog (members, dates, checklist, cover, Track link)
 - [x] Goals: goal tree, status, progress, metric vs plan chart, weekly updates, followers, contributing work
-- [~] Desk: service projects, queues, requests, SLAs, internal notes, help center for customers
-  - [x] Entities + repositories (`desk/`: ServiceDesk, RequestType, ServiceRequest, RequestComment)
-  - [ ] `DeskService` controller (`/api/desk`): queues, stats, request detail, reply/internal note, SLA per priority (P1 30m/4h, P2 1h/8h, P3 4h/24h, P4 8h/72h), similar requests, help-center endpoints, HubContributor
-  - [ ] `DeskSampleData` (IT Help desk, HELP-1093 VPN request etc.) and frontend (queues, request page, `/help` customer portal) — see `renders/Desk.png`
+- [x] Desk: service projects, queues, requests, SLAs, internal notes, help center for customers
+  - `DeskService` (`/api/desk`): queues (all/mine/unassigned/breaching/per category/resolved), stats (open, avg first response,
+    breaching soon, CSAT 30 days + delta), request detail, reply/internal note, SLA per priority (P1 30m/4h, P2 1h/8h, P3 4h/24h,
+    P4 8h/72h; resolution clock pauses while waiting for the customer), similar resolved requests, customers, HubContributor
+  - Help center `/api/desk/help/**`: customers only see their own requests and never internal notes; reply, resolve, CSAT
+  - `DeskSampleData` (IT Help with HELP-1093 VPN request, People team, Facilities, Legal); frontend `/desk` (projects, queues,
+    request page, customers, SLAs) and `/help` customer portal outside the agent shell
 - [ ] Pulse: alerts, acknowledge/close, on-call schedule, escalation, public status page (`renders/Pulse.png`)
 - [ ] Code: repositories, pull requests, reviews, pipeline runs (`renders/Code.png`); also serve `/api/code/linked/{issueKey}` used by the Track issue Development panel
 
@@ -92,11 +95,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do
 
 ## Resume notes (paused 2026-11-11)
 
-**Where we stopped:** Stage 5, Desk backend — entities written, service/controller not yet. Everything compiles.
+**Where we stopped:** Stage 5, Desk done and verified on a fresh H2 install (API + UI). Next: Pulse, then Code.
 
 **Verified working end to end:** setup wizard (key → license → DB → admin & sign-in → Kafka → org), built-in login,
 Portal SSO login against a real `portal-sso.jar` (confidential client + PKCE, account created on first sign-in),
-Track, Pages, Boards, Goals, home, search, notifications.
+Track, Pages, Boards, Goals, Desk (queues, request page, help center), home, search, notifications.
 
 **How to build and try it**
 ```bash
