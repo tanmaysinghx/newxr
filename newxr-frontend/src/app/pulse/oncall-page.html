@@ -1,0 +1,96 @@
+<div class="page">
+  <div class="crumbs"><a routerLink="/pulse">Operations</a><span class="sep">/</span><span>{{ ctx.team()?.name }}</span></div>
+  <div class="title-bar">
+    <div><h1>On-call schedule</h1>
+      @if (s(); as s) { <div class="sub">{{ s.layers[0]?.name ?? 'Primary' }} rotates every {{ s.layers[0]?.rotationDays ?? 7 }} days · columns are UTC days, times are in your time zone</div> }</div>
+    <div class="actions">
+      <button class="btn" (click)="openOverride()"><nx-icon name="user" /> Override</button>
+      <a class="btn" [href]="icsUrl()" download><nx-icon name="calendar" /> Export iCal</a>
+    </div>
+  </div>
+
+  @if (s(); as s) {
+    <div class="card now">
+      <div class="row">
+        @if (s.current?.user; as u) {
+          <span class="big-avatar" [style.background]="'color-mix(in srgb, ' + u.color + ' 16%, var(--surface))'" [style.color]="u.color">{{ u.initials }}</span>
+          <div class="grow"><div class="tiny muted">On call now</div><div class="strong">{{ u.name }}</div>
+            <div class="small muted">{{ s.current!.override ? 'Override' : s.layers[0]?.name }} until {{ dateTime(s.current!.end) }}@if (s.next) { · next: {{ s.next.name }} }</div></div>
+          <button class="btn danger" (click)="dialog.set('page')"><nx-icon name="phone" /> Page</button>
+          <button class="btn" (click)="dialog.set('message')"><nx-icon name="message" /> Message</button>
+        } @else { <div class="small subtle">Nobody is on call. Add people to the rotation.</div> }
+      </div>
+    </div>
+
+    <div class="card flush">
+      <div class="wk-nav"><button class="btn sm icon" (click)="move(-1)" aria-label="Previous week"><nx-icon name="chevron-left" /></button>
+        <button class="btn sm" (click)="move(0)">This week</button>
+        <button class="btn sm icon" (click)="move(1)" aria-label="Next week"><nx-icon name="chevron-right" /></button></div>
+      <div class="grid-wrap"><div class="cal">
+        <div class="cal-row head"><div class="lbl"></div><div class="track days">@for (d of days(); track $index) { <span [class.today]="d.today">{{ d.label }}</span> }</div></div>
+        @for (r of rows(); track r.name) {
+          <div class="cal-row" [class.final]="r.tone === 'final'"><div class="lbl">{{ r.name }}</div>
+            <div class="track">
+              @for (d of days(); track $index) { <span class="col-line" [style.left.%]="$index * 100 / 7"></span> }
+              @for (sh of r.shifts; track sh.start + (sh.user?.id ?? 0)) {
+                <div class="shift" [class]="'shift ' + (sh.override ? 'override' : r.tone)" [style.left.%]="pct(sh.start)" [style.width.%]="pct(sh.end) - pct(sh.start)"
+                     [style.--c]="sh.user?.color" [title]="title(sh)">
+                  <nx-avatar [user]="sh.user" [size]="16" /><span class="truncate">{{ sh.user?.name }}</span></div>
+              }
+              @if (nowPct() != null) { <span class="now-line" [style.left.%]="nowPct()"></span> }
+            </div></div>
+        }
+      </div></div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card"><h3>Rotations</h3>
+        @for (l of s.layers; track l.id) {
+          <div class="layer"><div class="strong small">{{ l.name }}</div><div class="tiny muted">Hands over every {{ l.rotationDays }} days, counting from {{ dateTime(l.rotationStart) }}</div>
+            <div class="row wrap mt-8">@for (m of l.members; track m.id; let i = $index) { <span class="chip"><nx-avatar [user]="m" [size]="14" /> {{ i + 1 }}. {{ m.name }}</span> }</div></div>
+        }
+      </div>
+      <div class="card"><h3>Overrides this week</h3>
+        @for (o of s.overrides; track o.id) {
+          <div class="row ovr"><nx-avatar [user]="o.user" [size]="22" /><div class="grow"><div class="small strong">{{ o.user.name }}</div>
+            <div class="tiny muted">{{ dateTime(o.startsAt) }} – {{ dateTime(o.endsAt) }}@if (o.reason) { · {{ o.reason }} }</div></div>
+            <button class="btn sm ghost icon" (click)="removeOverride(o.id)" aria-label="Remove override"><nx-icon name="x" /></button></div>
+        } @empty { <div class="small subtle">No overrides this week.</div> }
+      </div>
+    </div>
+
+    <div class="card"><div class="card-head"><h3>Escalation policy · {{ ctx.team()?.name }}</h3><a class="small" [routerLink]="['/pulse', ctx.key(), 'escalations']">Edit</a></div>
+      <div class="chain">@for (st of s.escalation; track st.id; let last = $last) {
+        <div class="step"><div class="tiny subtle">STEP {{ st.position + 1 }}</div><div class="small strong">{{ st.label.split(' · ')[0] }}</div><div class="tiny muted">{{ st.label.split(' · ')[1] }}</div></div>
+        @if (!last) { <span class="arrow"><nx-icon name="arrow-right" [size]="14" /></span> }
+      } @empty { <div class="small subtle">No escalation policy.</div> }</div>
+    </div>
+  }
+</div>
+
+@if (dialog() === 'override') {
+  <nx-modal title="Add override" (closed)="dialog.set(null)">
+    <div class="modal-body">
+      <div class="small muted">The person covers the primary rotation for this time.</div>
+      <div class="form-grid">
+        <div class="field full"><label>Who</label><select class="input" [(ngModel)]="ov.userId"><option [ngValue]="null">Me</option>
+          @for (u of ctx.team()?.members ?? []; track u.id) { <option [ngValue]="u.id">{{ u.name }}</option> }</select></div>
+        <div class="field"><label>From</label><input class="input" type="datetime-local" [(ngModel)]="ov.startsAt" /></div>
+        <div class="field"><label>Until</label><input class="input" type="datetime-local" [(ngModel)]="ov.endsAt" /></div>
+        <div class="field full"><label>Reason</label><input class="input" [(ngModel)]="ov.reason" placeholder="Covering while Ravi is travelling" /></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" (click)="dialog.set(null)">Cancel</button><button class="btn primary" (click)="saveOverride()">Add override</button></div>
+  </nx-modal>
+}
+@if (dialog() === 'page' || dialog() === 'message') {
+  <nx-modal [title]="dialog() === 'page' ? 'Page ' + (s()?.current?.user?.name ?? '') : 'Message ' + (s()?.current?.user?.name ?? '')" (closed)="dialog.set(null)">
+    <div class="modal-body">
+      @if (dialog() === 'page') { <div class="small muted">Raises an alert they own and runs it through the escalation policy until it's acknowledged.</div> }
+      <div class="field"><label>{{ dialog() === 'page' ? 'What do you need?' : 'Message' }}</label><textarea class="input" rows="3" [(ngModel)]="pg.message" autofocus></textarea></div>
+      @if (dialog() === 'page') { <div class="field"><label>Priority</label><select class="input" style="width:auto" [(ngModel)]="pg.priority">@for (p of priorities; track p) { <option [value]="p">{{ p }}</option> }</select></div> }
+    </div>
+    <div class="modal-foot"><button class="btn ghost" (click)="dialog.set(null)">Cancel</button>
+      <button class="btn" [class.danger]="dialog() === 'page'" [class.primary]="dialog() === 'message'" (click)="send()">{{ dialog() === 'page' ? 'Page now' : 'Send' }}</button></div>
+  </nx-modal>
+}

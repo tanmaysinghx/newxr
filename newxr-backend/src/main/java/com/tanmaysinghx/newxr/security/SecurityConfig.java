@@ -56,7 +56,8 @@ public class SecurityConfig {
                 // Everything else is the single-page app and its assets, which handle sign-in
                 // themselves; the data behind them is under /api.
                 .anyRequest().permitAll())
-            .csrf(csrf -> csrf.spa())
+            // Alert and CI webhooks authenticate with the secret token in their URL and are called by tools, not browsers.
+            .csrf(csrf -> csrf.spa().ignoringRequestMatchers("/api/public/pulse/hooks/**", "/api/public/code/hooks/**"))
             .addFilterAfter(new CsrfCookieFilter(), org.springframework.security.web.csrf.CsrfFilter.class)
             .addFilterBefore(new PortalAvailabilityFilter(registrations),
                     org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.class)

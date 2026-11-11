@@ -35,6 +35,8 @@ export class IssuePage {
   readonly issue = signal<IssueDetail | null>(null);
   readonly sprints = signal<SprintView[]>([]);
   readonly linked = signal<LinkedWork[]>([]);
+  /** Linked-work URLs may carry a query string (?branch=…), which [routerLink] would encode. */
+  openLink(url: string) { this.router.navigateByUrl(url); }
   readonly tab = signal<'comments' | 'history'>('comments');
   readonly editingSummary = signal(false);
   readonly editingDesc = signal(false);

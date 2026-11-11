@@ -1,0 +1,123 @@
+@if (p(); as p) {
+<div class="page">
+  <div class="crumbs"><a [routerLink]="['/code', p.repoSlug, 'pulls']">Pull requests</a><span class="sep">/</span><span>#{{ p.number }}</span></div>
+  <div class="row head">
+    <h1 class="grow">{{ p.title }} <span class="subtle">#{{ p.number }}</span></h1>
+    @if (p.status === 'OPEN') {
+      <button class="btn" (click)="decline()">Decline</button>
+      <button class="btn" (click)="review('APPROVED')"><nx-icon name="check" /> Approve</button>
+      <button class="btn" (click)="review('NEEDS_WORK')">Needs work</button>
+      <button class="btn success" [disabled]="!p.mergeable" (click)="merge()" [title]="p.mergeable ? 'Merge into ' + p.targetBranch : p.conflicts.length ? 'Resolve conflicts first' : 'Nothing to merge'"><nx-icon name="branch" /> Merge</button>
+    } @else if (p.status === 'DECLINED') { <button class="btn" (click)="reopen()">Reopen</button> }
+  </div>
+  <div class="row small muted wrap"><nx-status [value]="p.status" /><nx-avatar [user]="p.author" [size]="18" /> {{ p.author?.name }}
+    {{ p.status === 'MERGED' ? 'merged' : 'wants to merge' }} {{ p.commits.length }} commit{{ p.commits.length === 1 ? '' : 's' }} from
+    <span class="chip mono">{{ p.sourceBranch }}</span> into <span class="chip mono">{{ p.targetBranch }}</span>
+    @if (p.closedAt) { · {{ label(p.status) }} by {{ p.closedBy?.name }} {{ ago(p.closedAt) }} }</div>
+
+  @if (p.conflicts.length) {
+    <div class="banner danger"><nx-icon name="alert" /><div class="grow"><b>{{ p.conflicts.length }} file{{ p.conflicts.length === 1 ? '' : 's' }} changed on both branches.</b>
+      Edit {{ p.conflicts.length === 1 ? 'it' : 'them' }} on <span class="mono">{{ p.sourceBranch }}</span> to combine both changes, then keep the branch's version:
+      @for (c of p.conflicts; track c) { <div class="row mt-8"><span class="mono small grow">{{ c }}</span>
+        <a class="btn sm" [routerLink]="['/code', p.repoSlug, 'source']" [queryParams]="{ branch: p.sourceBranch, file: c }">Edit</a>
+        <button class="btn sm" (click)="resolve(c)">Keep branch version</button></div> }</div></div>
+  }
+
+  <div class="layout">
+    <div class="main">
+      <div class="tabs">
+        <button [class.active]="tab() === 'overview'" (click)="tab.set('overview')">Overview</button>
+        <button [class.active]="tab() === 'commits'" (click)="tab.set('commits')">Commits <span class="count">{{ p.commits.length }}</span></button>
+        <button [class.active]="tab() === 'files'" (click)="tab.set('files')">Files changed <span class="count">{{ p.files.length }}</span></button>
+        <button [class.active]="tab() === 'checks'" (click)="tab.set('checks')">Checks @if (p.checks) { <span class="count">{{ p.checks.stages.length }}</span> }</button>
+      </div>
+
+      @switch (tab()) {
+        @case ('overview') {
+          <div class="card">@if (p.description) { <div class="prose" [innerHTML]="desc()"></div> } @else { <div class="small subtle">No description.</div> }</div>
+          @for (c of p.comments; track c.id) {
+            <div class="comment"><nx-avatar [user]="c.author" [size]="28" /><div class="grow">
+              <div class="small"><b>{{ c.author?.name }}</b><span class="subtle when">{{ ago(c.at) }}</span>
+                @if (c.path) { <span class="tiny muted"> on <a (click)="tab.set('files')" class="mono">{{ c.path }}:{{ c.line }}</a></span> }</div>
+              <div class="prose small-prose" [innerHTML]="md(c.body)"></div></div></div>
+          }
+          @if (p.status === 'OPEN') {
+            <div class="card col" style="gap:8px"><textarea class="input" rows="3" [(ngModel)]="body" placeholder="Leave a comment"></textarea>
+              <div class="row"><span class="grow"></span><button class="btn primary" (click)="comment()">Comment</button></div></div>
+          }
+        }
+        @case ('commits') {
+          <div class="card flush">@for (c of p.commits; track c.sha) {
+            <div class="crow"><nx-avatar [user]="c.author" [size]="22" /><span class="grow truncate">{{ firstLine(c.message) }}</span>
+              <span class="tiny muted nowrap">{{ ago(c.at) }}</span><span class="mono small link">{{ short(c.sha) }}</span></div>
+          } @empty { <div class="small subtle" style="padding:14px">No commits recorded on this branch.</div> }</div>
+        }
+        @case ('files') {
+          <div class="small muted"><span class="success-text">+{{ p.additions }}</span> <span class="danger-text">−{{ p.deletions }}</span> across {{ p.files.length }} files
+            @if (p.status === 'OPEN') { · <a (click)="updateBranch()">Update branch from {{ p.targetBranch }}</a> }</div>
+          @for (f of p.files; track f.path) {
+            <div class="card flush file">
+              <div class="fh" (click)="toggleFile(f.path)"><nx-icon [name]="collapsed().has(f.path) ? 'chevron-right' : 'chevron-down'" [size]="14" />
+                <span class="mono small grow">{{ f.path }}</span>@if (f.added) { <span class="lozenge success">New</span> }
+                @if (f.conflict) { <span class="lozenge danger">Conflict</span> }
+                <span class="small"><span class="success-text">+{{ f.additions }}</span> <span class="danger-text">−{{ f.deletions }}</span></span></div>
+              @if (!collapsed().has(f.path)) {
+                @if (f.tooLarge) { <div class="small subtle" style="padding:12px">This file is too large to show a line diff.</div> }
+                <div class="diff"><table>
+                  @for (h of f.hunks; track $index) {
+                    <tr class="hunk"><td colspan="4">&#64;&#64; −{{ h.oldStart }} +{{ h.newStart }} &#64;&#64;</td></tr>
+                    @for (l of h.lines; track $index) {
+                      <tr [class.add]="l.type === '+'" [class.del]="l.type === '-'">
+                        <td class="no">{{ l.oldNo ?? '' }}</td><td class="no">{{ l.newNo ?? '' }}</td>
+                        <td class="sign">@if (l.newNo && p.status === 'OPEN') { <button class="plus" (click)="lineBox.set({ path: f.path, line: l.newNo })" aria-label="Comment on this line">+</button> } @else { {{ l.type }} }</td>
+                        <td class="ln">{{ l.text }}</td></tr>
+                      @for (c of commentsAt(f, l.newNo); track c.id) {
+                        <tr class="inline"><td colspan="3"></td><td><div class="ic"><nx-avatar [user]="c.author" [size]="22" /><div><div class="small"><b>{{ c.author?.name }}</b><span class="subtle when">{{ ago(c.at) }}</span></div>
+                          <div class="small">{{ c.body }}</div></div></div></td></tr>
+                      }
+                      @if (lineBox()?.path === f.path && lineBox()?.line === l.newNo && l.newNo) {
+                        <tr class="inline"><td colspan="3"></td><td><div class="col" style="gap:6px;padding:8px 0">
+                          <textarea class="input" rows="2" [(ngModel)]="lineBody" placeholder="Comment on line {{ l.newNo }}" autofocus></textarea>
+                          <div class="row"><span class="grow"></span><button class="btn sm ghost" (click)="lineBox.set(null)">Cancel</button><button class="btn sm primary" (click)="lineComment()">Comment</button></div></div></td></tr>
+                      }
+                    }
+                  }
+                </table></div>
+              }
+            </div>
+          } @empty { <div class="card small subtle">No changes.</div> }
+        }
+        @case ('checks') {
+          @if (p.checks; as c) {
+            <div class="card"><div class="row"><b class="grow">Pipeline #{{ c.pipeline }}</b><nx-status [value]="c.status" /><a class="small" [routerLink]="['/code', p.repoSlug, 'pipelines', c.pipeline]">Details</a></div>
+              @for (s of c.stages; track s.name) { <div class="row chk"><span [class]="'st ' + s.status"><nx-icon [name]="stageIcon(s.status)" [size]="15" /></span><span class="grow">{{ s.name }}</span><nx-status [value]="s.status" /></div> }</div>
+          } @else { <div class="card small subtle">No pipeline has reported for {{ p.sourceBranch }}. Configure the CI webhook in Repository settings.</div> }
+        }
+      }
+    </div>
+
+    <aside class="side">
+      <div class="card"><h4>Reviewers</h4>
+        @for (r of p.reviewers; track r.user.id) { <div class="row rv"><nx-avatar [user]="r.user" [size]="22" /><span class="grow small">{{ r.user.name }}</span><nx-status [value]="r.state" /></div> }
+        @empty { <div class="small subtle">No reviewers yet.</div> }
+        @if (p.status === 'OPEN') {
+          <select class="input mt-8" [ngModel]="null" (ngModelChange)="addReviewer($event)" aria-label="Add reviewer"><option [ngValue]="null">Add reviewer…</option>
+            @for (u of people.all(); track u.id) { @if (notReviewer(u.id)) { <option [ngValue]="u.id">{{ u.name }}</option> } }</select>
+        }
+      </div>
+      <div class="card"><h4>Checks</h4>
+        @if (p.checks; as c) { @for (s of c.stages; track s.name) { <div class="row chk"><span [class]="'st ' + s.status"><nx-icon [name]="stageIcon(s.status)" [size]="14" /></span><span class="small grow">{{ s.name }}</span></div> } }
+        @else { <div class="small subtle">No pipeline yet.</div> }
+        @if (p.status === 'OPEN') {
+          <div class="row chk"><span [class]="'st ' + (p.conflicts.length ? 'FAILED' : 'PASSED')"><nx-icon [name]="p.conflicts.length ? 'x-circle' : 'check-circle'" [size]="14" /></span>
+            <span class="small grow">{{ p.conflicts.length ? 'Conflicts with ' + p.targetBranch : 'No conflicts' }}</span></div>
+        }
+      </div>
+      <div class="card"><h4>Linked issues</h4>
+        @for (i of p.issues; track i.key) { <a class="issue" [routerLink]="['/track/issue', i.key]"><div class="row"><span class="mono small nowrap grow">{{ i.key }}</span><nx-status [value]="i.status" /></div><div class="small truncate">{{ i.summary }}</div></a> }
+        @empty { <div class="small subtle">Mention an issue key in the title, branch or description.</div> }
+      </div>
+    </aside>
+  </div>
+</div>
+}

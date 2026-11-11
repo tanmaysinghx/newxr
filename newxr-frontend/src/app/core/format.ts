@@ -48,6 +48,7 @@ export const STATUS_TONE: Record<string, string> = {
   MAJOR_OUTAGE: 'danger', OUTAGE: 'danger', ADMIN: 'violet', MEMBER: '', GUEST: 'warning', ACTIVE: 'success', INVITED: 'info',
   DEACTIVATED: '', DRAFT: '', PUBLISHED: 'success', P1: 'danger', P2: 'orange', P3: 'warning', P4: 'info', P5: '',
   INVESTIGATING: 'danger', IDENTIFIED: 'warning', MONITORING: 'info', FUTURE: '', CANCELLED: '',
+  SUCCEEDED: 'success', LOCKED: 'danger', NEEDS_REVIEW: 'violet', PENDING: '', QUEUED: '', STOPPED: '', COMMITTED: '',
 };
 
 export function label(v?: string | null): string {

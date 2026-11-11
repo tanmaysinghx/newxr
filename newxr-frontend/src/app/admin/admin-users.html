@@ -1,0 +1,93 @@
+<div class="page">
+  <div class="crumbs"><span>Administration</span><span class="sep">/</span><span>{{ auth.options()?.organization }}</span></div>
+  <div class="title-bar">
+    <div><h1>Users</h1><div class="sub">{{ rows().length }} account{{ rows().length === 1 ? '' : 's' }}{{ q || role || status || app ? ' matching the filters' : '' }}</div></div>
+    <div class="actions"><button class="btn" (click)="exportCsv()"><nx-icon name="download" /> Export</button>
+      <button class="btn primary" (click)="openInvite()"><nx-icon name="plus" /> Invite users</button></div>
+  </div>
+
+  <div class="grid grid-4">
+    <div class="card"><div class="stat-label"><nx-icon name="users" [size]="14" /> Active users</div><div class="stat-value">{{ stats().active }}</div></div>
+    <div class="card"><div class="stat-label"><nx-icon name="mail" [size]="14" /> Pending invites</div><div class="stat-value">{{ stats().invited }}</div></div>
+    <div class="card"><div class="stat-label"><nx-icon name="shield" [size]="14" /> Administrators</div><div class="stat-value">{{ stats().admins }}</div></div>
+    <div class="card"><div class="stat-label"><nx-icon name="user" [size]="14" /> Guests</div><div class="stat-value">{{ stats().guests }}</div></div>
+  </div>
+
+  <div class="row wrap">
+    <div class="search-input"><nx-icon name="search" /><input class="input" placeholder="Search by name or email" [(ngModel)]="q" (ngModelChange)="load()" style="width:220px" /></div>
+    <select class="input" style="width:auto" [(ngModel)]="role" (ngModelChange)="load()" aria-label="Role"><option value="">Role</option><option value="ADMIN">Admin</option><option value="MEMBER">Member</option><option value="GUEST">Guest</option></select>
+    <select class="input" style="width:auto" [(ngModel)]="app" (ngModelChange)="load()" aria-label="App access"><option value="">App access</option>@for (p of enabledApps(); track p.code) { <option [value]="p.code">{{ p.name }}</option> }</select>
+    <select class="input" style="width:auto" [(ngModel)]="status" (ngModelChange)="load()" aria-label="Status"><option value="">Status</option><option value="ACTIVE">Active</option><option value="INVITED">Invited</option><option value="LOCKED">Locked</option><option value="DEACTIVATED">Deactivated</option></select>
+  </div>
+
+  <div class="card flush"><div class="table-wrap"><table class="table">
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>App access</th><th>Status</th><th>Last active</th></tr></thead>
+    <tbody>@for (u of page(); track u.id) {
+      <tr class="clickable" [class.selected]="selected()?.id === u.id" (click)="open(u)">
+        <td><div class="row nowrap"><nx-avatar [user]="u" [size]="24" /><span class="strong">{{ u.name }}</span></div></td>
+        <td class="muted">{{ u.email }}</td><td><nx-status [value]="u.role" /></td>
+        <td><div class="row gap-4">@for (a of u.apps; track a) { <nx-app-tile [app]="a" [size]="18" [attr.title]="appName(a)" /> }</div></td>
+        <td><nx-status [value]="u.status" /></td><td class="muted nowrap">{{ u.lastActiveAt ? ago(u.lastActiveAt) : '—' }}</td></tr>
+    } @empty { <tr><td colspan="6"><div class="empty">No users match.</div></td></tr> }</tbody></table></div>
+    <div class="table-foot"><span>{{ rows().length ? (pageIdx() * size + 1) + '–' + min((pageIdx() + 1) * size, rows().length) + ' of ' + rows().length : '' }}</span>
+      <div class="row"><button class="btn sm icon" [disabled]="pageIdx() === 0" (click)="pageIdx.set(pageIdx() - 1)" aria-label="Previous page"><nx-icon name="chevron-left" /></button>
+        <button class="btn sm icon" [disabled]="(pageIdx() + 1) * size >= rows().length" (click)="pageIdx.set(pageIdx() + 1)" aria-label="Next page"><nx-icon name="chevron-right" /></button></div></div>
+  </div>
+</div>
+
+@if (selected(); as u) {
+  <aside class="drawer" role="dialog" aria-label="User details">
+    <div class="dh"><nx-avatar [user]="u" [size]="36" /><div class="grow"><div class="strong">{{ u.name }}</div><div class="small muted">{{ u.email }}</div></div>
+      <button class="btn ghost icon" (click)="selected.set(null)" aria-label="Close"><nx-icon name="x" /></button></div>
+    <div class="db">
+      <div class="row wrap"><nx-status [value]="u.status" /><span class="tiny muted">{{ u.source === 'PORTAL' ? 'Created by Portal SSO' : 'Local account' }} ·
+        {{ u.hasPassword ? 'has a password' : 'no password' }} · joined {{ ago(u.createdAt) }}</span></div>
+      @if (u.groups.length) { <div class="small muted">Groups: {{ u.groups.join(', ') }}</div> }
+      <div class="field"><label>Name</label><input class="input" [(ngModel)]="edit.name" /></div>
+      <div class="field"><label>Job title</label><input class="input" [(ngModel)]="edit.jobTitle" /></div>
+      <div class="field"><label>Role</label><select class="input" [(ngModel)]="edit.role"><option value="ADMIN">Admin — manages users and settings</option>
+        <option value="MEMBER">Member</option><option value="GUEST">Guest — external collaborator</option></select></div>
+      <div class="field"><label>App access</label>
+        @if (edit.role === 'ADMIN') { <div class="small muted">Administrators can open every enabled app.</div> }
+        @else {
+          <label class="row small"><input type="checkbox" [(ngModel)]="edit.allApps" /> Every enabled app, including ones turned on later</label>
+          @if (!edit.allApps) { <div class="apps">@for (p of enabledApps(); track p.code) {
+            <label class="row small"><input type="checkbox" [checked]="edit.apps.has(p.code)" (change)="toggleApp(edit.apps, p.code)" /><nx-app-tile [app]="p.code" [size]="16" /> {{ p.name }}</label> }</div> }
+        }
+      </div>
+      <button class="btn primary" (click)="save()">Save changes</button>
+      <div class="sep-line"></div>
+      <div class="col" style="gap:8px">
+        @if (u.status === 'LOCKED') { <button class="btn" (click)="act('unlock')"><nx-icon name="lock" /> Unlock account</button> }
+        @if (u.status !== 'DEACTIVATED') {
+          <button class="btn" (click)="reset()"><nx-icon name="link" /> {{ u.status === 'INVITED' ? 'New invitation link' : 'Password reset link' }}</button>
+          @if (u.id !== auth.me()?.id) { <button class="btn" (click)="act('deactivate')"><nx-icon name="x-circle" /> Deactivate</button> }
+        } @else { <button class="btn" (click)="act('reactivate')"><nx-icon name="refresh" /> Reactivate</button> }
+        @if (u.status === 'INVITED' && !u.lastActiveAt) { <button class="btn ghost danger-text" (click)="revoke()">Revoke invitation</button> }
+      </div>
+    </div>
+  </aside>
+}
+
+@if (inviting()) {
+  <nx-modal title="Invite users" (closed)="inviting.set(false)">
+    <div class="modal-body">
+      @if (inviteError()) { <div class="banner danger"><nx-icon name="alert" /><div>{{ inviteError() }}</div></div> }
+      <div class="form-grid">
+        <div class="field full"><label>Email <span class="req">*</span></label><input class="input" type="email" [(ngModel)]="inv.email" placeholder="sam@agency.example" autofocus /></div>
+        <div class="field"><label>Name</label><input class="input" [(ngModel)]="inv.name" /></div>
+        <div class="field"><label>Job title</label><input class="input" [(ngModel)]="inv.jobTitle" /></div>
+        <div class="field full"><label>Role</label><select class="input" [(ngModel)]="inv.role"><option value="MEMBER">Member</option><option value="GUEST">Guest</option><option value="ADMIN">Admin</option></select></div>
+      </div>
+      @if (inv.role !== 'ADMIN') {
+        <label class="row small"><input type="checkbox" [(ngModel)]="inv.allApps" /> Every enabled app</label>
+        @if (!inv.allApps) { <div class="apps">@for (p of enabledApps(); track p.code) {
+          <label class="row small"><input type="checkbox" [checked]="inv.apps.has(p.code)" (change)="toggleApp(inv.apps, p.code)" /><nx-app-tile [app]="p.code" [size]="16" /> {{ p.name }}</label> }</div> }
+      }
+      <div class="small muted">You'll get a one-time link to send them. People using Portal SSO can also just sign in with it.</div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" (click)="inviting.set(false)">Cancel</button><button class="btn primary" (click)="invite()">Invite</button></div>
+  </nx-modal>
+}
+
+@if (link(); as l) { <nx-link-dialog [result]="l.result" [title]="l.title" (closed)="link.set(null)" /> }

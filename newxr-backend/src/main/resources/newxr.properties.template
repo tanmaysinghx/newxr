@@ -10,8 +10,8 @@
 #  the built-in defaults; environment variables and --command-line arguments override this
 #  file. Use a different file with:  java -jar newxr.jar --config=/etc/newxr/newxr.properties
 #
-#  The setup wizard and Administration -> Database edit this file in place: they change only
-#  the keys they own and keep the rest of it, comments included.
+#  The setup wizard edits this file in place when you pick a database: it changes only the
+#  keys it owns and keeps the rest of it, comments included.
 #
 #  This file can hold your database password. Keep it readable by the service account only.
 # =====================================================================================

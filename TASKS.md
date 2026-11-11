@@ -22,7 +22,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do
 ## Stage 0 — Repository & planning
 - [x] Review design renders and Portal SSO (README, setup wizard, config file, SSO client in eggless-observability)
 - [x] Task list (this file)
-- [ ] Root `README.md` in Portal SSO style, `LICENSE.txt` (Apache 2.0), `.gitignore`, `AGENTS.md`
+- [x] Root `README.md`, `LICENSE.txt` (Apache 2.0), `.gitignore`, `.dockerignore`, `AGENTS.md`
 
 ## Stage 1 — Platform backend (single jar, first-run setup)
 - [x] Rename to `com.tanmaysinghx.newxr`, jar `newxr.jar`, launcher flags `--httpPort`, `--config`, `--newxrHome`
@@ -72,19 +72,35 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do
   - Help center `/api/desk/help/**`: customers only see their own requests and never internal notes; reply, resolve, CSAT
   - `DeskSampleData` (IT Help with HELP-1093 VPN request, People team, Facilities, Legal); frontend `/desk` (projects, queues,
     request page, customers, SLAs) and `/help` customer portal outside the agent shell
-- [ ] Pulse: alerts, acknowledge/close, on-call schedule, escalation, public status page (`renders/Pulse.png`)
-- [ ] Code: repositories, pull requests, reviews, pipeline runs (`renders/Code.png`); also serve `/api/code/linked/{issueKey}` used by the Track issue Development panel
+- [x] Pulse: alerts, acknowledge/close, on-call schedule, escalation, public status page
+  - Alerts with dedup (count), acknowledge/close/reopen/snooze/assign/notes, bulk actions, timeline; stats (MTTA/MTTR 7 days + delta)
+  - Escalation policy per team (primary/secondary/person/team, delays from raise); `AlertEngine` job runs due steps every 30 s;
+    notifications are in-app (email/SMS need a provider — see Later)
+  - Incidents keyed `{team}-{n}` (OPS-77), updates (public/internal), affected components, resolving closes linked alerts
+  - On-call: rotating layers + overrides → final schedule, week view, page/message the on-call person, iCal export
+  - Status page: components (manual status or worst open incident impact), 90-day bars and uptime from public incidents,
+    public `/status/{slug}` + Atom feed (`/api/public/status/{slug}/feed.atom`)
+  - Integrations: webhook `/api/public/pulse/hooks/{token}` (generic JSON or Alertmanager; token stored as SHA-256, shown once;
+    CSRF-exempt), Desk "Linked" values open search
+- [x] Code: repositories, pull requests, reviews, pipeline runs (`renders/Code.png`); `/api/code/linked/{issueKey}` for Track
+  - Files stored per branch with a merge-base hash: browser editing as commits, branches, PR diffs (LCS line diff), line comments,
+    reviews, merge with conflict detection, "update branch" and "keep branch version" to resolve
+  - CI reports pipelines/deployments to a per-repo webhook `/api/public/code/hooks/{token}` (hashed, CSRF-exempt); Newxr runs no builds
+  - Issue keys in branch names, commit messages and PR titles link to Track (Development panel); sample repo `orbit-mobile`, PR #284
 
 ## Stage 6 — Hub & Admin
 - [x] Global search across apps, notifications panel, starred, recent (built in Stage 2, each app adds a HubContributor)
-- [ ] Admin: users (invite, role, deactivate), groups, products, security, audit log
-- [ ] Admin settings: organization, sign-in (built-in / Portal SSO), database status, Kafka
+- [x] Admin: users (invite, role, app access, deactivate, unlock, reset), groups, products, security, audit log
+  - Invitations/resets are one-time links (`/invite/{token}`, hashed, 7 days / 24 h) shown to the admin: no SMTP yet
+  - Audit log in its own transaction: sign-ins (password, Portal SSO, failures, lockouts) and every admin change
+  - Billing from the design is left out (self-hosted, Apache-2.0); no 2FA tile (2FA isn't implemented)
+- [x] Admin settings: organization, sign-in (built-in / Portal SSO, with issuer test), database status + connection test, Kafka (+ test)
 
 ## Stage 7 — Packaging & docs
-- [ ] `build.sh` (frontend + backend → `newxr.jar`), `install.sh` (Linux, systemd)
-- [ ] `distribution/newxr.service`, `Dockerfile`, `compose.yaml`, `.env.example`
-- [ ] Docs: deployment, Portal SSO integration, Kafka events, architecture
-- [ ] End-to-end smoke test of a fresh install on H2
+- [x] `build.sh` (frontend + backend → `dist/newxr.jar`), `install.sh` (Linux, systemd, Java 25 check, re-run to upgrade)
+- [x] `distribution/newxr.service` (hardened; `systemd-analyze verify` clean), `Dockerfile`, `compose.yaml` (+ PostgreSQL), `.env.example`
+- [x] Docs: `docs/deployment.md`, `docs/portal-sso.md`, `docs/kafka-events.md`, `docs/architecture.md`
+- [x] End-to-end smoke test of a fresh install on H2: `./smoke-test.sh` (28 checks, passes); backend unit tests (diff, on-call, mappings)
 
 ## Later (not in v1)
 - [ ] Liquibase changelogs (v1 uses Hibernate schema update) and an H2 → PostgreSQL/MySQL data copy
@@ -93,13 +109,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do
 
 ---
 
-## Resume notes (paused 2026-11-11)
+## Resume notes (2026-11-11)
 
-**Where we stopped:** Stage 5, Desk done and verified on a fresh H2 install (API + UI). Next: Pulse, then Code.
+**Where we stopped:** v1 complete: every stage done. `./build.sh && ./smoke-test.sh` passes on a fresh H2 install.
+The Docker image and `install.sh` were not run here (no Docker; needs root/systemd); the unit file verifies.
 
 **Verified working end to end:** setup wizard (key → license → DB → admin & sign-in → Kafka → org), built-in login,
 Portal SSO login against a real `portal-sso.jar` (confidential client + PKCE, account created on first sign-in),
-Track, Pages, Boards, Goals, Desk (queues, request page, help center), home, search, notifications.
+Track, Pages, Boards, Goals, Desk (queues, request page, help center), Pulse (alerts, escalation job, incidents, on-call, public status page, webhooks), Code (source, edit/commit, PR diff/review/merge/conflicts,
+CI webhook, Track links), Admin (invite → accept → sign in, roles/app access, lockout/unlock, audit), home, search, notifications.
 
 **How to build and try it**
 ```bash
@@ -120,6 +138,5 @@ Tick "Add sample content" in the wizard to get the Orbit Mobile demo data.
 - CSP is strict (`script-src 'self'`): keep Angular `inlineCritical: false`.
 - Charts: series colours `--series-1/--series-2` (validated light + dark); always legend + tooltip + table view.
 
-**Still to do after Stage 5:** Stage 6 Admin (users/groups/products/security/audit, sign-in + Kafka + database settings
-screens), Stage 7 packaging (`build.sh`, `install.sh`, systemd unit, Dockerfile/compose, README in Portal SSO style,
-docs, AGENTS.md), then the "Later" list.
+**Next:** the "Later" list: Liquibase + H2→PostgreSQL/MySQL copy, Portal SSO manifest flow, Git hosting, SMTP email
+(invitations, escalations, status subscriptions), real-time Pages, 2FA, Ask AI.

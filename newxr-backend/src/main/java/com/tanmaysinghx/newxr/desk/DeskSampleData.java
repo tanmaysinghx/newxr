@@ -60,11 +60,11 @@ public class DeskSampleData implements SampleDataContributor {
                 "Since this morning nobody in the Lisbon office can connect to the VPN. The client shows \"TLS handshake failed\". "
                         + "We tried restarting laptops and the office router.");
         vpn.setFirstRespondedAt(vpn.getCreatedAt().plus(Duration.ofMinutes(26)));
-        vpn.setLinked("PULSE-77");
+        vpn.setLinked("OPS-77");
         // Breached by 12 minutes: due 12 minutes ago.
         vpn.setResolutionDue(now.minus(Duration.ofMinutes(12)));
         requests.save(vpn);
-        comment(vpn, me, "Confirmed the cert on vpn-lis-01 expired. Renewal request sent to Network — linked PULSE incident #77.", true,
+        comment(vpn, me, "Confirmed the cert on vpn-lis-01 expired. Renewal request sent to Network — linked incident OPS-77.", true,
                 now.minus(Duration.ofMinutes(60)));
         comment(vpn, me, "Hi Priya — thanks for the logs. We've found the cause and expect the VPN back within the hour. I'll update you here.", false,
                 now.minus(Duration.ofMinutes(40)));

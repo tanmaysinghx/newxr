@@ -1,0 +1,75 @@
+<div class="page">
+  <div class="row wrap">
+    <select class="input" style="width:auto" [ngModel]="b()" (ngModelChange)="go({ branch: $event, path: path() ?? null, file: null })" aria-label="Branch">
+      @for (n of ctx.view()?.branchNames ?? []; track n) { <option [value]="n">{{ n }}</option> }
+    </select>
+    <div class="crumb-path">
+      <a (click)="go({})">{{ ctx.view()?.repo?.name }}</a>
+      @for (c of crumbs(); track c.path) { <span class="sep">/</span>
+        @if (c.last) { <span>{{ c.name }}</span> } @else { <a (click)="go({ path: c.path })">{{ c.name }}</a> } }
+    </div>
+    <span class="grow"></span>
+    @if (!file()) { <button class="btn" (click)="startNew()"><nx-icon name="plus" /> New file</button> }
+    @if (b() !== ctx.view()?.repo?.defaultBranch) {
+      <a class="btn" [routerLink]="['/code', ctx.slug(), 'pulls', 'new']" [queryParams]="{ source: b() }"><nx-icon name="pr" /> Create pull request</a>
+    }
+  </div>
+
+  @if (tree(); as t) {
+    @if (t.lastCommit; as c) {
+      <div class="card last"><nx-avatar [user]="c.author" [size]="22" /><b class="small">{{ c.author?.name }}</b>
+        <span class="small truncate grow">{{ firstLine(c.message) }}</span>
+        <span class="mono small link">{{ short(c.sha) }}</span>@if (c.checks) { <nx-status [value]="c.checks" /> }<span class="small muted nowrap">{{ ago(c.at) }}</span></div>
+    }
+    <div class="card flush">
+      @if (t.path) { <a class="ent" (click)="go({ path: t.path.includes('/') ? t.path.slice(0, t.path.lastIndexOf('/')) : null })"><nx-icon name="folder" [size]="15" /><span>..</span></a> }
+      @for (e of t.entries; track e.path) {
+        <a class="ent" (click)="open(e)"><nx-icon [name]="e.dir ? 'folder' : 'page'" [size]="15" [class.dir]="e.dir" />
+          <span class="name">{{ e.name }}</span><span class="msg truncate">{{ e.lastCommitMessage }}</span><span class="when">{{ ago(e.lastCommitAt) }}</span></a>
+      }
+    </div>
+    @if (t.readme) {
+      <div class="card"><div class="row small strong readme-head"><nx-icon name="book" [size]="14" /> {{ t.readmePath }}</div>
+        <div class="prose" [innerHTML]="readme()"></div></div>
+    }
+  }
+
+  @if (f(); as f) {
+    <div class="card flush">
+      <div class="file-head"><b class="mono small grow">{{ f.path }}</b><span class="small muted">{{ f.lines }} lines</span>
+        @if (!editing()) { <button class="btn sm" (click)="edit()"><nx-icon name="edit" [size]="13" /> Edit</button> }</div>
+      @if (editing()) {
+        <textarea class="input editor" [(ngModel)]="draft.content" spellcheck="false" aria-label="File content"></textarea>
+      } @else {
+        <div class="code"><table>@for (l of lines(); track $index) { <tr><td class="no">{{ $index + 1 }}</td><td class="ln">{{ l }}</td></tr> }</table></div>
+      }
+    </div>
+    @if (editing()) {
+      <ng-container *ngTemplateOutlet="commitBox" />
+    }
+  }
+</div>
+
+@if (creating()) {
+  <div class="backdrop" (mousedown)="$event.target === $event.currentTarget && creating.set(false)">
+    <div class="modal wide" role="dialog" aria-modal="true" aria-label="New file">
+      <div class="modal-head"><h2>New file on {{ b() }}</h2><button class="btn ghost icon" (click)="creating.set(false)" aria-label="Close"><nx-icon name="x" /></button></div>
+      <div class="modal-body">
+        <div class="field"><label>Path</label><input class="input mono" [(ngModel)]="draft.path" placeholder="app/src/Feature.kt" autofocus /></div>
+        <textarea class="input editor" [(ngModel)]="draft.content" spellcheck="false" aria-label="File content"></textarea>
+        <ng-container *ngTemplateOutlet="commitBox" />
+      </div>
+    </div>
+  </div>
+}
+
+<ng-template #commitBox>
+  <div class="card commit">
+    <div class="field"><label>Commit message</label><input class="input" [(ngModel)]="draft.message" placeholder="Describe the change (mention ORB-412 to link it)" /></div>
+    <label class="row small"><input type="radio" name="mode" value="commit" [(ngModel)]="draft.mode" /> Commit directly to <span class="mono">{{ b() }}</span></label>
+    <label class="row small"><input type="radio" name="mode" value="branch" [(ngModel)]="draft.mode" /> Create a new branch and start a pull request</label>
+    @if (draft.mode === 'branch') { <input class="input mono" [(ngModel)]="draft.newBranch" placeholder="feature/ORB-412-my-change" /> }
+    <div class="row"><span class="grow"></span><button class="btn ghost" (click)="editing.set(false); creating.set(false)">Cancel</button>
+      <button class="btn primary" (click)="commit()">Commit changes</button></div>
+  </div>
+</ng-template>

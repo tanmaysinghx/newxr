@@ -120,7 +120,7 @@
         <div class="card details">
           <h4>Development</h4>
           @for (l of linked(); track l.link) {
-            <a class="dev" [routerLink]="l.link"><nx-icon [name]="l.kind === 'pr' ? 'pr' : l.kind === 'branch' ? 'branch' : 'play'" [size]="14" /><span class="grow truncate">{{ l.title }}</span><nx-status [value]="l.status" /></a>
+            <a class="dev" [href]="l.link" (click)="$event.preventDefault(); openLink(l.link)"><nx-icon [name]="l.kind === 'pr' ? 'pr' : l.kind === 'branch' ? 'branch' : 'play'" [size]="14" /><span class="grow truncate">{{ l.title }}</span><nx-status [value]="l.status" /></a>
           } @empty { <div class="small muted">Mention <span class="mono">{{ i.key }}</span> in a branch, commit or pull request in Code to link it here.</div> }
         </div>
         <div class="tiny subtle">Created {{ longDate(i.createdAt) }} · Updated {{ ago(i.updatedAt) }}</div>

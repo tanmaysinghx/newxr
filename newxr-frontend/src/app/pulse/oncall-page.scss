@@ -1,0 +1,25 @@
+.big-avatar { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; flex: none; }
+.now .row { gap: 12px; }
+.wk-nav { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.grid-wrap { overflow-x: auto; }
+.cal { min-width: 760px; }
+.cal-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); border-bottom: 1px solid var(--border); }
+.cal-row:last-child { border-bottom: 0; }
+.cal-row.final { background: var(--surface-hover); }
+.lbl { padding: 12px; font: 600 12px var(--font); color: var(--text-muted); display: flex; align-items: center; }
+.track { position: relative; height: 44px; overflow: hidden; }
+.track.days { display: grid; grid-template-columns: repeat(7, 1fr); height: 34px; }
+.track.days span { display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-muted); border-left: 1px solid var(--border); }
+.track.days span.today { color: var(--accent-hover); background: var(--accent-soft); font-weight: 600; }
+.col-line { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--border); }
+.shift { position: absolute; top: 8px; height: 28px; border-radius: 6px; display: flex; align-items: center; gap: 6px; padding: 0 6px; color: #fff;
+  font: 600 11.5px var(--font); overflow: hidden; background: var(--c, var(--track)); box-shadow: inset 0 0 0 1px rgb(0 0 0 / .06); margin-left: 1px; }
+.shift nx-avatar { box-shadow: 0 0 0 1.5px #fff; background: #fff !important; }
+.shift.override { background: var(--desk); }
+.now-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--danger); z-index: 2; }
+.layer + .layer { margin-top: 14px; }
+.ovr { padding: 6px 0; border-bottom: 1px solid var(--border); }
+.ovr:last-child { border-bottom: 0; }
+.chain { display: flex; align-items: stretch; gap: 8px; flex-wrap: wrap; }
+.step { flex: 1; min-width: 170px; background: var(--surface-hover); border-radius: 8px; padding: 10px 12px; }
+.arrow { display: flex; align-items: center; color: var(--text-subtle); }

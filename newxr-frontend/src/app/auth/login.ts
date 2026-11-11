@@ -77,6 +77,7 @@ export class Login {
   password = '';
 
   constructor() {
+    this.email = this.route.snapshot.queryParamMap.get('email') ?? '';
     const err = this.route.snapshot.queryParamMap.get('error');
     if (err) this.error.set(SSO_ERRORS[err] ?? 'Sign-in failed.');
     this.auth.loadOptions().then(o => {

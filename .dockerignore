@@ -1,0 +1,11 @@
+.git
+dist
+design
+**/node_modules
+**/.angular
+newxr-frontend/dist
+newxr-backend/build
+newxr-backend/.gradle
+newxr-backend/bin
+*.log
+.env

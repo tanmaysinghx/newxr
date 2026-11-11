@@ -109,7 +109,7 @@
             @for (p of priorities; track p) { <option [value]="p">{{ p }}</option> }</select></dd>
           <dt>Organisation</dt><dd>{{ r.organization ?? '—' }}</dd>
           <dt>Component</dt><dd>@if (r.component) { <span class="chip">{{ r.component }}</span> } @else { — }</dd>
-          <dt>Linked</dt><dd>@if (r.linked) { <span class="link-text">{{ r.linked }}</span> } @else { — }</dd>
+          <dt>Linked</dt><dd>@if (r.linked) { <a [routerLink]="['/search']" [queryParams]="{ q: r.linked }">{{ r.linked }}</a> } @else { — }</dd>
         </dl>
       </div>
 

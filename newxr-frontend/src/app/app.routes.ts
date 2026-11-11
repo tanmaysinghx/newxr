@@ -18,6 +18,16 @@ export const routes: Routes = [
     title: 'Edit · Pages',
   },
   {
+    path: 'invite/:token',
+    loadComponent: () => import('./admin/admin-settings').then(m => m.InvitePage),
+    title: 'Join · Newxr',
+  },
+  {
+    path: 'status/:slug',
+    loadComponent: () => import('./pulse/status-pages').then(m => m.PublicStatus),
+    title: 'Status',
+  },
+  {
     path: 'help',
     canActivate: [authGuard],
     loadChildren: () => import('./desk/desk.routes').then(m => m.HELP_ROUTES),
@@ -30,6 +40,9 @@ export const routes: Routes = [
       { path: 'pages', loadChildren: () => import('./pages/pages.routes').then(m => m.PAGES_ROUTES) },
       { path: 'boards', loadChildren: () => import('./boards/boards.routes').then(m => m.BOARDS_ROUTES) },
       { path: 'goals', loadChildren: () => import('./goals/goals.routes').then(m => m.GOALS_ROUTES) },
+      { path: 'admin', loadChildren: () => import('./admin/admin.routes').then(m => m.ADMIN_ROUTES) },
+      { path: 'code', loadChildren: () => import('./code/code.routes').then(m => m.CODE_ROUTES) },
+      { path: 'pulse', loadChildren: () => import('./pulse/pulse.routes').then(m => m.PULSE_ROUTES) },
       { path: 'desk', loadChildren: () => import('./desk/desk.routes').then(m => m.DESK_ROUTES) },
       { path: 'track', loadChildren: () => import('./track/track.routes').then(m => m.TRACK_ROUTES) },
       {

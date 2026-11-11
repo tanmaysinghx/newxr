@@ -1,5 +1,9 @@
 package com.tanmaysinghx.newxr.security;
 
+import org.springframework.http.HttpStatus;
+
+import com.tanmaysinghx.newxr.common.ApiException;
+
 import com.tanmaysinghx.newxr.settings.SettingsService;
 import com.tanmaysinghx.newxr.setup.SetupService;
 import com.tanmaysinghx.newxr.user.User;
@@ -35,15 +39,17 @@ public class AuthController {
     private final CurrentUser currentUser;
     private final SecurityContextRepository contextRepository;
     private final com.tanmaysinghx.newxr.admin.ProductService products;
+    private final com.tanmaysinghx.newxr.admin.AuditLog audit;
 
     public AuthController(AuthService auth, SettingsService settings, SetupService setup, CurrentUser currentUser,
-                          SecurityContextRepository contextRepository, com.tanmaysinghx.newxr.admin.ProductService products) {
+                          SecurityContextRepository contextRepository, com.tanmaysinghx.newxr.admin.ProductService products, com.tanmaysinghx.newxr.admin.AuditLog audit) {
         this.auth = auth;
         this.settings = settings;
         this.setup = setup;
         this.currentUser = currentUser;
         this.contextRepository = contextRepository;
         this.products = products;
+        this.audit = audit;
     }
 
     @GetMapping("/api/public/auth/options")
@@ -58,7 +64,14 @@ public class AuthController {
 
     @PostMapping("/api/public/auth/login")
     public Me login(@Valid @RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
-        User user = auth.login(body.email(), body.password());
+        User user;
+        try {
+            user = auth.login(body.email(), body.password());
+        } catch (ApiException e) {
+            audit.record(null, null, body.email(), e.getStatus() == HttpStatus.LOCKED ? "signin.locked" : "signin.failed", body.email(), e.getMessage());
+            throw e;
+        }
+        audit.record(user, "signin.password", user.getEmail(), null);
         // New session id on sign-in (fixation); the CSRF token is rotated with it.
         request.getSession(true);
         request.changeSessionId();

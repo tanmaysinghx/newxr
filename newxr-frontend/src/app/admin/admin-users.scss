@@ -1,0 +1,6 @@
+.drawer { position: fixed; top: var(--nav-h); right: 0; bottom: 0; width: 380px; max-width: 100vw; background: var(--surface); border-left: 1px solid var(--border);
+  box-shadow: -8px 0 24px rgb(0 0 0 / .08); z-index: 30; display: flex; flex-direction: column; }
+.dh { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border); }
+.db { padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
+.apps { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; margin-top: 6px; }
+.sep-line { border-top: 1px solid var(--border); }

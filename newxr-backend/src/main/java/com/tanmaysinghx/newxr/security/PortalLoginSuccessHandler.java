@@ -32,9 +32,11 @@ public class PortalLoginSuccessHandler implements AuthenticationSuccessHandler {
     private static final Logger log = LoggerFactory.getLogger(PortalLoginSuccessHandler.class);
     private final UserRepository users;
     private final SettingsService settings;
+    private final com.tanmaysinghx.newxr.admin.AuditLog audit;
     private final HttpSessionSecurityContextRepository contextRepository = new HttpSessionSecurityContextRepository();
 
-    public PortalLoginSuccessHandler(UserRepository users, SettingsService settings) {
+    public PortalLoginSuccessHandler(UserRepository users, SettingsService settings, com.tanmaysinghx.newxr.admin.AuditLog audit) {
+        this.audit = audit;
         this.users = users;
         this.settings = settings;
     }
@@ -78,6 +80,7 @@ public class PortalLoginSuccessHandler implements AuthenticationSuccessHandler {
         user.setFailedLogins(0);
         user.setLastActiveAt(Instant.now());
         user = users.save(user);
+        audit.record(user, "signin.portal", user.getEmail(), null);
 
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(NewxrPrincipal.authenticationFor(user, "portal"));

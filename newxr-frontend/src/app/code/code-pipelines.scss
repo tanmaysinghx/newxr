@@ -1,0 +1,10 @@
+.stages { display: flex; align-items: flex-start; margin: 18px 0 6px; }
+.stage { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 110px; text-align: center; }
+.bar { flex: 1; height: 2px; background: var(--border); margin-top: 13px; }
+.bar.done { background: var(--success); }
+.dot { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--neutral-soft); color: var(--text-subtle); flex: none; }
+.stage.PASSED .dot, .dot.PASSED { background: var(--success); color: #fff; }
+.stage.FAILED .dot, .dot.FAILED { background: var(--danger); color: #fff; }
+.stage.RUNNING .dot, .dot.RUNNING { background: var(--info); color: #fff; }
+.log { background: #12141c; color: #c9d1e3; border-radius: 8px; padding: 12px 14px; font: 12px/1.6 var(--mono); white-space: pre-wrap; margin: 12px 0 0; max-height: 360px; overflow: auto; }
+@media (max-width: 800px) { .stages { overflow-x: auto; } }

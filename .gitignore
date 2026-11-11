@@ -1,0 +1,19 @@
+# Build output
+/dist/
+newxr-backend/build/
+newxr-backend/.gradle/
+newxr-backend/bin/
+newxr-frontend/dist/
+newxr-frontend/.angular/
+node_modules/
+
+# Local configuration and data: never commit these
+.env
+.newxr/
+*.log
+
+# Editors and OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
